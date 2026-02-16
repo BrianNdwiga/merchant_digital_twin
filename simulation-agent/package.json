@@ -1,0 +1,10 @@
+{
+  "name": "simulation-agent",
+  "version": "1.0.0",
+  "description": "AI agent that simulates merchant behavior",
+  "main": "agent.js",
+  "scripts": {
+    "start": "node agent.js"
+  },
+  "dependencies": {}
+}

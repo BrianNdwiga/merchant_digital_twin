@@ -1,0 +1,10 @@
+{
+  "name": "simulation-orchestrator",
+  "version": "1.0.0",
+  "description": "Orchestrates Docker-based agent simulations",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "dependencies": {}
+}
