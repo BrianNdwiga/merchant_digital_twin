@@ -1,0 +1,6 @@
+merchant_id,income_level,digital_literacy,device_type,network_profile,patience_score,retry_threshold,issue_type
+L001,low,basic,feature_phone,2G_EDGE,0.2,4,pin_reset
+L002,low,basic,android_low_end,3G_POOR,0.3,3,balance_check
+L003,low,basic,feature_phone,2G_EDGE,0.25,4,kyc_update
+L004,low,intermediate,android_low_end,3G_POOR,0.4,3,transaction_failure
+L005,low,basic,android_low_end,3G_POOR,0.35,3,statement_request

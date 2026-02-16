@@ -1,0 +1,16 @@
+{
+  "watch": [
+    "index.js",
+    "csvProcessor.js",
+    "../data/*.csv"
+  ],
+  "ext": "js,json,csv",
+  "ignore": [
+    "node_modules/**",
+    "../data/uploaded_*.csv"
+  ],
+  "env": {
+    "NODE_ENV": "development"
+  },
+  "delay": "1000"
+}

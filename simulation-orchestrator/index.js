@@ -2,7 +2,7 @@ const { exec } = require('child_process');
 const util = require('util');
 const execPromise = util.promisify(exec);
 
-const MERCHANT_GENERATOR_URL = 'http://localhost:3001/generate-merchants';
+const MERCHANT_GENERATOR_URL = 'http://localhost:3001/generate-merchants-from-csv';
 const DOCKER_IMAGE = 'simulation-agent:latest';
 
 // Fetch merchants from generator service
@@ -50,13 +50,14 @@ async function spawnAgentContainer(merchant) {
 
 // Main orchestration function
 async function runSimulation() {
-  console.log('🎯 Digital Twin Simulation Orchestrator');
+  console.log('🎯 Digital Twin Simulation Orchestrator V2');
+  console.log('📊 CSV-Driven Data Pipeline');
   console.log('=' .repeat(50));
   
-  // Step 1: Fetch merchants
-  console.log('\n📡 Fetching synthetic merchants...');
-  const merchants = await fetchMerchants(5);
-  console.log(`✅ Received ${merchants.length} merchant profiles\n`);
+  // Step 1: Fetch merchants from CSV
+  console.log('\n📡 Fetching merchants from CSV data...');
+  const merchants = await fetchMerchants();
+  console.log(`✅ Received ${merchants.length} merchant profiles from CSV\n`);
   
   // Step 2: Verify Docker image exists
   console.log('🐳 Checking Docker image...');

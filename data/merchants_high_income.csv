@@ -1,0 +1,6 @@
+merchant_id,income_level,digital_literacy,device_type,network_profile,patience_score,retry_threshold,issue_type
+H001,high,advanced,ios,4G_GOOD,0.9,1,balance_check
+H002,high,advanced,ios,4G_GOOD,0.85,1,statement_request
+H003,high,intermediate,ios,4G_GOOD,0.8,2,transaction_failure
+H004,high,advanced,android_mid,4G_GOOD,0.9,1,pin_reset
+H005,high,intermediate,ios,4G_UNSTABLE,0.75,2,kyc_update
