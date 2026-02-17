@@ -1,0 +1,39 @@
+version: '3.8'
+
+services:
+  # Insight Service - Intelligence Layer
+  insight-service:
+    build:
+      context: ./insight-service
+      dockerfile: Dockerfile
+    container_name: insight-service
+    ports:
+      - "3000:3000"
+    networks:
+      - digital-twin-network
+    environment:
+      - NODE_ENV=production
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:3000/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  # Merchant Generator - CSV-driven profiles
+  merchant-generator:
+    build:
+      context: ./merchant-generator
+      dockerfile: Dockerfile
+    container_name: merchant-generator
+    ports:
+      - "3001:3001"
+    volumes:
+      - ./data:/app/data:ro
+    networks:
+      - digital-twin-network
+    environment:
+      - NODE_ENV=production
+
+networks:
+  digital-twin-network:
+    driver: bridge

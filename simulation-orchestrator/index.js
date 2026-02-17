@@ -25,8 +25,9 @@ async function spawnAgentContainer(merchant) {
   const containerName = `agent_${merchant.merchantId}`;
   const merchantProfile = JSON.stringify(merchant).replace(/"/g, '\\"');
   
-  // Docker run command with merchant profile as environment variable
-  const dockerCmd = `docker run --rm --name ${containerName} -e MERCHANT_PROFILE="${merchantProfile}" ${DOCKER_IMAGE}`;
+  // Docker run command with merchant profile and insight service URL
+  const insightServiceUrl = process.env.INSIGHT_SERVICE_URL || 'http://host.docker.internal:3000';
+  const dockerCmd = `docker run --rm --name ${containerName} -e MERCHANT_PROFILE="${merchantProfile}" -e INSIGHT_SERVICE_URL="${insightServiceUrl}" ${DOCKER_IMAGE}`;
   
   console.log(`\n🚀 Spawning agent for ${merchant.merchantId}...`);
   

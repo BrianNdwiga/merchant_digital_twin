@@ -1,0 +1,16 @@
+{
+  "name": "insight-service",
+  "version": "1.0.0",
+  "description": "Insight and intelligence layer for Digital Twin simulations",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "dev": "nodemon index.js"
+  },
+  "dependencies": {
+    "express": "^4.18.2"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.2"
+  }
+}

@@ -1,0 +1,13 @@
+{
+  "name": "digital-twin-cli",
+  "version": "1.0.0",
+  "description": "CLI tools for Digital Twin simulation reporting",
+  "main": "report.js",
+  "scripts": {
+    "report": "node report.js"
+  },
+  "bin": {
+    "dt-report": "./report.js"
+  },
+  "dependencies": {}
+}

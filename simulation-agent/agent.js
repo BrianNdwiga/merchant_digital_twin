@@ -1,5 +1,8 @@
 // AI Agent - Simulates merchant behavior inside Docker container
 
+// Configuration
+const INSIGHT_SERVICE_URL = process.env.INSIGHT_SERVICE_URL || 'http://localhost:3000';
+
 // Network latency mapping (milliseconds)
 const NETWORK_LATENCY = {
   '4G_GOOD': 100,
@@ -10,6 +13,26 @@ const NETWORK_LATENCY = {
 
 // Sleep utility
 const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+
+// Send event to Insight Service
+async function sendEventToInsightService(eventData) {
+  try {
+    const response = await fetch(`${INSIGHT_SERVICE_URL}/simulation-event`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(eventData)
+    });
+    
+    if (!response.ok) {
+      console.error(`⚠️  Failed to send event to Insight Service: ${response.status}`);
+    }
+  } catch (error) {
+    // Fail silently - don't break simulation if insight service is down
+    console.error(`⚠️  Could not reach Insight Service: ${error.message}`);
+  }
+}
 
 // Parse merchant profile from environment variable
 function getMerchantProfile() {
@@ -117,7 +140,22 @@ async function runAgentSimulation() {
     
     success = Math.random() < successProbability;
     
-    // Log attempt insight
+    // Prepare event data
+    const eventData = {
+      merchantId: merchant.merchantId,
+      scenario: merchant.issueType.toUpperCase(),
+      networkProfile: merchant.networkProfile,
+      digitalLiteracy: merchant.digitalLiteracy,
+      incomeLevel: merchant.incomeLevel,
+      deviceType: merchant.deviceType,
+      event: 'ATTEMPT',
+      attempt: attempts,
+      latency: latency,
+      result: success ? 'success' : 'retry',
+      timestamp: Date.now()
+    };
+    
+    // Log attempt insight (console)
     logInsight({
       merchantId: merchant.merchantId,
       event: `${merchant.issueType.toUpperCase()}_ATTEMPT`,
@@ -126,6 +164,9 @@ async function runAgentSimulation() {
       result: success ? 'success' : 'retry',
       timestamp: new Date().toISOString()
     });
+    
+    // Send to Insight Service
+    await sendEventToInsightService(eventData);
     
     // If failed and can retry, wait before next attempt
     if (!success && attempts < maxAttempts) {
@@ -140,26 +181,37 @@ async function runAgentSimulation() {
   const experienceScore = calculateExperienceScore(attempts, success, merchant, totalLatency);
   const failures = attempts - (success ? 1 : 0);
   
-  // Log final summary with enhanced metrics
+  // Prepare summary data
+  const summaryData = {
+    totalAttempts: attempts,
+    failures: failures,
+    success: success,
+    experienceScore: experienceScore,
+    completionTimeMs: completionTimeMs,
+    avgLatencyMs: Math.round(totalLatency / attempts),
+    issueType: merchant.issueType,
+    networkProfile: merchant.networkProfile,
+    digitalLiteracy: merchant.digitalLiteracy,
+    incomeLevel: merchant.incomeLevel,
+    deviceType: merchant.deviceType,
+    outcome: success ? '✅ RESOLVED' : '❌ ABANDONED'
+  };
+  
+  // Log final summary with enhanced metrics (console)
   console.log('\n' + '─'.repeat(50));
   logInsight({
     merchantId: merchant.merchantId,
-    summary: {
-      totalAttempts: attempts,
-      failures: failures,
-      success: success,
-      experienceScore: experienceScore,
-      completionTimeMs: completionTimeMs,
-      avgLatencyMs: Math.round(totalLatency / attempts),
-      issueType: merchant.issueType,
-      networkProfile: merchant.networkProfile,
-      digitalLiteracy: merchant.digitalLiteracy,
-      incomeLevel: merchant.incomeLevel,
-      deviceType: merchant.deviceType,
-      outcome: success ? '✅ RESOLVED' : '❌ ABANDONED'
-    }
+    summary: summaryData
   });
   console.log('─'.repeat(50) + '\n');
+  
+  // Send summary to Insight Service
+  await sendEventToInsightService({
+    merchantId: merchant.merchantId,
+    event: 'SUMMARY',
+    summary: summaryData,
+    timestamp: Date.now()
+  });
   
   // Exit with appropriate code
   process.exit(success ? 0 : 1);

@@ -1,66 +1,60 @@
-# Digital Twin Simulation System - Version 2
+# Digital Twin Simulation System
 
-A data-driven prototype system that simulates merchants from CSV datasets by spawning AI agents inside Docker containers.
+A data-driven simulation platform that spawns AI agents in Docker containers to simulate merchant behavior, collect insights, and produce actionable intelligence for evaluating customer experience before production rollout.
 
-## What's New in Version 2
+## Current Version: 3.0 - Insight & Decision Layer
 
-- **CSV Data Ingestion** - Load merchant profiles from CSV files
-- **Data Validation** - Automatic validation and normalization of CSV data
-- **Enhanced Agent Behavior** - Richer simulation logic based on income, literacy, device type
-- **Improved Metrics** - Detailed insights including completion time, failures, and experience scores
-- **File Upload Support** - Upload custom CSV files via API
+### What's New in V3
+
+- 🧠 **Insight Service** - Intelligence layer that collects and aggregates simulation events
+- 📊 **Real-time Analytics** - Metrics calculation and experience scoring
+- 📋 **CLI Reporting** - Beautiful terminal reports with recommendations
+- 🔄 **Event-Driven Architecture** - Agents send structured events to insight service
+- 🐳 **Docker Networking** - Services communicate via Docker network
+- 📈 **Breakdown Analytics** - Insights grouped by network, literacy, and scenario
 
 ## System Architecture
 
 ```
-CSV Data File (data/merchants.csv)
-         ↓
-Merchant Generator V2 (Port 3001)
-         ↓
-Simulation Orchestrator V2
-         ↓
-Docker Containers (AI Agents)
-         ↓
-Enhanced Behavior Simulation
-         ↓
-Structured Insights & Metrics
+CSV Data → Merchant Generator (Port 3001)
+                ↓
+    Simulation Orchestrator
+                ↓
+    Docker Containers (AI Agents)
+                ↓
+    Insight Service (Port 3000) ← Events from all agents
+                ↓
+    Aggregated Metrics & Intelligence
+                ↓
+    CLI Report Tool (Terminal Output)
 ```
 
 ## Components
 
-1. **CSV Processor** - Parses, validates, and transforms CSV data into merchant profiles
-2. **Merchant Generator V2** - REST API that serves CSV-driven merchant profiles
-3. **Simulation Orchestrator V2** - Fetches CSV merchants and spawns Docker containers
-4. **AI Agent V2** - Enhanced simulation with multi-factor behavior modeling
+1. **Insight Service** - Collects events, calculates metrics, provides insights API
+2. **Merchant Generator** - CSV-driven merchant profile generator with REST API
+3. **Simulation Orchestrator** - Spawns Docker containers for each merchant
+4. **AI Agent** - Simulates merchant behavior and sends events to insight service
+5. **CLI Report Tool** - Fetches and displays formatted insights with recommendations
 
 ## Prerequisites
 
 - Node.js 18+ (LTS)
 - Docker Desktop installed and running
 - npm or yarn
-- nodemon (installed automatically as dev dependency)
 
-## Setup Instructions
+## Quick Start
 
 ### 1. Install Dependencies
 
 ```bash
-# Install merchant generator dependencies (includes CSV parsing)
-cd merchant-generator
-npm install
-
-# Install orchestrator dependencies
-cd ../simulation-orchestrator
-npm install
-
-# Install agent dependencies
-cd ../simulation-agent
-npm install
+# Install all services
+cd insight-service && npm install && cd ..
+cd merchant-generator && npm install && cd ..
+cd simulation-orchestrator && npm install && cd ..
+cd simulation-agent && npm install && cd ..
+cd cli && npm install && cd ..
 ```
-
-The merchant generator now includes:
-- `csv-parser` - For parsing CSV files
-- `multer` - For handling CSV file uploads
 
 ### 2. Build Docker Image
 
@@ -69,260 +63,355 @@ cd simulation-agent
 docker build -t simulation-agent:latest .
 ```
 
-Verify the image was built:
+Verify:
 ```bash
 docker images | findstr simulation-agent
 ```
 
-### 3. Prepare CSV Data
+### 3. Start Services
 
-A sample CSV file is already provided at `data/merchants.csv` with 8 merchant profiles.
-
-CSV format:
-```csv
-merchant_id,income_level,digital_literacy,device_type,network_profile,patience_score,retry_threshold,issue_type
-M001,low,basic,android_low_end,3G_POOR,0.3,3,pin_reset
-M002,medium,intermediate,android_mid,4G_GOOD,0.7,2,statement_request
-```
-
-### 4. Start Merchant Generator
-
-Open a terminal and run:
-
-**Development Mode (with auto-reload):**
+**Terminal 1 - Insight Service:**
 ```bash
-cd merchant-generator
-npm run dev
+cd insight-service
+npm start
 ```
 
-**Production Mode:**
+Wait for:
+```
+🧠 Insight Service - Digital Twin Intelligence Layer
+Server running on http://localhost:3000
+```
+
+**Terminal 2 - Merchant Generator:**
 ```bash
 cd merchant-generator
 npm start
 ```
 
-You should see:
+Wait for:
 ```
-[nodemon] starting `node index.js`
 🚀 Merchant Generator V2 - CSV-Driven
-==================================================
 Server running on http://localhost:3001
-
-Available endpoints:
-  GET  /generate-merchants-from-csv
-  POST /generate-merchants-from-csv (upload CSV)
-  GET  /health
-==================================================
-📂 Loading merchants from: ../data/merchants.csv
 ✅ Loaded 8 merchants into cache
-[nodemon] watching path(s): index.js csvProcessor.js ../data/*.csv
 ```
 
-Keep this terminal open. With nodemon, any changes to code or CSV files will auto-reload!
-
-### 5. Run Simulation Orchestrator
-
-Open a NEW terminal and run:
-
-**Development Mode (with auto-reload):**
-```bash
-cd simulation-orchestrator
-npm run dev
-```
-
-**Production Mode:**
+**Terminal 3 - Run Simulation:**
 ```bash
 cd simulation-orchestrator
 npm start
+```
+
+This will spawn 8 Docker containers, each simulating a merchant and sending events to the insight service.
+
+**Terminal 4 - View Report:**
+```bash
+cd cli
+npm run report
 ```
 
 ## Expected Output
 
-### Merchant Generator Output
+### CLI Report Example
+
 ```
-🚀 Merchant Generator V2 - CSV-Driven
-==================================================
-Server running on http://localhost:3001
-📂 Loading merchants from: ../data/merchants.csv
-✅ Loaded 8 merchants into cache
-📤 Returning 8 merchants from CSV
-```
+═══════════════════════════════════════════════════════════════════
+  DIGITAL TWIN SIMULATION REPORT
+═══════════════════════════════════════════════════════════════════
+  Generated: 2/18/2026, 10:30:45 AM
 
-### Orchestrator Output
-```
-🎯 Digital Twin Simulation Orchestrator V2
-📊 CSV-Driven Data Pipeline
-==================================================
+───────────────────────────────────────────────────────────────────
+  OVERALL METRICS
+───────────────────────────────────────────────────────────────────
 
-📡 Fetching merchants from CSV data...
-✅ Received 8 merchant profiles from CSV
+  Total Merchants Simulated:    8
+  Success Rate:                 87.5% (7 succeeded)
+  Average Completion Time:      4.2s (4200ms)
+  Average Retry Attempts:       1.8
+  Overall Experience Score:     0.68 / 1.0
+  
+  🟡 Experience Assessment: Good - Minor friction points exist
 
-🐳 Checking Docker image...
-✅ Docker image found
+───────────────────────────────────────────────────────────────────
+  FAILURES BY NETWORK PROFILE
+───────────────────────────────────────────────────────────────────
 
-🔄 Starting agent simulations...
-==================================================
+  2G_EDGE          25.0% ████████████
+                   Avg Time: 6.5s | Attempts: 2.5
 
-🚀 Spawning agent for M001...
-```
+  3G_POOR          16.7% ████████
+                   Avg Time: 4.8s | Attempts: 2.0
 
-### Agent Container Output (Enhanced)
-Each agent logs structured JSON insights with richer data:
+  4G_GOOD           0.0% 
+                   Avg Time: 2.1s | Attempts: 1.0
 
-```json
-{
-  "merchantId": "M001",
-  "event": "PIN_RESET_ATTEMPT",
-  "attempt": 1,
-  "latency": 820,
-  "result": "retry",
-  "timestamp": "2026-02-16T10:30:45.123Z"
-}
-```
+───────────────────────────────────────────────────────────────────
+  RECOMMENDATIONS
+───────────────────────────────────────────────────────────────────
 
-Final summary with enhanced metrics:
-```json
-{
-  "merchantId": "M001",
-  "summary": {
-    "totalAttempts": 2,
-    "failures": 1,
-    "success": true,
-    "experienceScore": 0.58,
-    "completionTimeMs": 4200,
-    "avgLatencyMs": 810,
-    "issueType": "pin_reset",
-    "networkProfile": "3G_POOR",
-    "digitalLiteracy": "basic",
-    "incomeLevel": "low",
-    "deviceType": "android_low_end",
-    "outcome": "✅ RESOLVED"
-  }
-}
+  📡 Network: 2G_EDGE has 25.0% failure rate
+     → Consider optimizing for low-bandwidth scenarios
+     → Implement better retry mechanisms for poor networks
+
+  📚 Digital Literacy: basic users struggle (33.3% failure)
+     → Simplify UI/UX for less tech-savvy users
+     → Add more guidance and help text
 ```
 
-## CSV Data Schema
+## API Endpoints
+
+### Insight Service (Port 3000)
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| POST | `/simulation-event` | Receive events from agents |
+| GET | `/insights/summary` | Overall aggregated metrics |
+| GET | `/insights/by-network` | Breakdown by network profile |
+| GET | `/insights/by-literacy` | Breakdown by digital literacy |
+| GET | `/insights/by-scenario` | Breakdown by issue type |
+| DELETE | `/insights/clear` | Clear all stored events |
+| GET | `/health` | Health check |
+
+### Merchant Generator (Port 3001)
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/generate-merchants-from-csv` | Get merchants from default CSV |
+| POST | `/generate-merchants-from-csv` | Upload custom CSV file |
+| GET | `/health` | Health check |
+
+## CSV Data Format
 
 ### Required Columns
 
-| Column | Type | Valid Values | Description |
-|--------|------|--------------|-------------|
-| merchant_id | string | Any unique ID | Merchant identifier |
-| income_level | enum | low, medium, high | Economic status |
-| digital_literacy | enum | basic, intermediate, advanced | Tech proficiency |
-| device_type | enum | android_low_end, android_mid, ios, feature_phone | Device category |
-| network_profile | enum | 4G_GOOD, 4G_UNSTABLE, 3G_POOR, 2G_EDGE | Network quality |
-| patience_score | float | 0.0 - 1.0 | User patience level |
-| retry_threshold | integer | 1 - 10 | Max retry attempts |
-| issue_type | enum | pin_reset, balance_check, transaction_failure, kyc_update, statement_request | Issue category |
+| Column | Type | Valid Values |
+|--------|------|--------------|
+| merchant_id | string | Any unique ID |
+| income_level | enum | low, medium, high |
+| digital_literacy | enum | basic, intermediate, advanced |
+| device_type | enum | android_low_end, android_mid, ios, feature_phone |
+| network_profile | enum | 4G_GOOD, 4G_UNSTABLE, 3G_POOR, 2G_EDGE |
+| patience_score | float | 0.0 - 1.0 |
+| retry_threshold | integer | 1 - 10 |
+| issue_type | enum | pin_reset, balance_check, transaction_failure, kyc_update, statement_request |
 
-### Merchant Profile JSON (Generated from CSV)
+### Sample CSV
 
-```json
-{
-  "merchantId": "M001",
-  "incomeLevel": "low",
-  "digitalLiteracy": "basic",
-  "deviceType": "android_low_end",
-  "networkProfile": "3G_POOR",
-  "patienceScore": 0.3,
-  "retryThreshold": 3,
-  "issueType": "pin_reset"
-}
+```csv
+merchant_id,income_level,digital_literacy,device_type,network_profile,patience_score,retry_threshold,issue_type
+M001,low,basic,android_low_end,3G_POOR,0.3,3,pin_reset
+M002,medium,intermediate,android_mid,4G_GOOD,0.7,2,statement_request
+M003,high,advanced,ios,4G_GOOD,0.8,1,balance_check
 ```
 
-## Network Latency Simulation
+Sample datasets provided:
+- `data/merchants.csv` - Default (8 merchants)
+- `data/merchants_large.csv` - Large dataset (15 merchants)
+- `data/merchants_high_income.csv` - High-income only (5 merchants)
+- `data/merchants_low_income.csv` - Low-income only (5 merchants)
 
-| Profile | Simulated Delay |
-|---------|----------------|
-| 4G_GOOD | 100ms |
-| 4G_UNSTABLE | 300ms |
-| 3G_POOR | 800ms |
-| 2G_EDGE | 1500ms |
+## Experience Score Formula
 
-## Testing Individual Components
+```
+experienceScore = 
+  (successRate * 0.5) 
+  - ((avgRetries - 1) * 0.1) 
+  + (avgIndividualExperienceScore * 0.4)
+```
 
-### Test Merchant Generator (CSV-based)
+**Interpretation:**
+- **0.7 - 1.0** 🟢 Excellent - Ready for production
+- **0.5 - 0.7** 🟡 Good - Minor improvements needed
+- **0.3 - 0.5** 🟠 Fair - Significant issues to address
+- **0.0 - 0.3** 🔴 Poor - Critical problems
+
+## Testing Workflow
+
+### 1. Health Checks
+
 ```bash
-# Get merchants from default CSV
-curl http://localhost:3001/generate-merchants-from-csv
-
-# Check health
-curl http://localhost:3001/health
+curl http://localhost:3000/health  # Insight service
+curl http://localhost:3001/health  # Merchant generator
 ```
 
-### Upload Custom CSV
+### 2. View Insights via API
+
 ```bash
-curl -X POST -F "csvFile=@path/to/your/merchants.csv" http://localhost:3001/generate-merchants-from-csv
+curl http://localhost:3000/insights/summary
+curl http://localhost:3000/insights/by-network
+curl http://localhost:3000/insights/by-literacy
+curl http://localhost:3000/insights/by-scenario
 ```
 
-### Test Single Agent Manually
+### 3. Test with Different Datasets
+
 ```bash
-docker run --rm -e MERCHANT_PROFILE="{\"merchantId\":\"M001\",\"incomeLevel\":\"low\",\"digitalLiteracy\":\"basic\",\"deviceType\":\"android_low_end\",\"networkProfile\":\"3G_POOR\",\"patienceScore\":0.3,\"retryThreshold\":3,\"issueType\":\"pin_reset\"}" simulation-agent:latest
+# Upload custom CSV
+curl -X POST -F "csvFile=@data/merchants_large.csv" http://localhost:3001/generate-merchants-from-csv
+
+# Run simulation
+cd simulation-orchestrator && npm start
+
+# View report
+cd cli && npm run report
 ```
 
-## Troubleshooting
+### 4. Clear Data and Re-run
 
-### Docker image not found
 ```bash
-cd simulation-agent
-docker build -t simulation-agent:latest .
+curl -X DELETE http://localhost:3000/insights/clear
+cd simulation-orchestrator && npm start
+cd cli && npm run report
 ```
 
-### Merchant generator not responding
-- Ensure it's running on port 3001
-- Check if port is already in use
-- Try: `netstat -ano | findstr :3001`
+## Development Mode
 
-### Container fails to start
-- Check Docker Desktop is running
-- Verify image exists: `docker images`
-- Check logs: `docker logs agent_SYNTH_001`
+Use nodemon for auto-reload during development:
+
+```bash
+# Insight service
+cd insight-service && npm run dev
+
+# Merchant generator
+cd merchant-generator && npm run dev
+
+# Orchestrator
+cd simulation-orchestrator && npm run dev
+```
+
+## Docker Compose (Alternative)
+
+Run services with Docker Compose:
+
+```bash
+docker-compose up
+```
+
+Then run orchestrator manually:
+```bash
+cd simulation-orchestrator
+set INSIGHT_SERVICE_URL=http://localhost:3000
+npm start
+```
 
 ## Project Structure
 
 ```
 digital-twin-prototype/
 │
-├── data/
-│   └── merchants.csv     # CSV data source (8 sample merchants)
-│
-├── merchant-generator/
-│   ├── index.js          # REST API with CSV support
-│   ├── csvProcessor.js   # CSV parsing, validation, transformation
+├── insight-service/          # Intelligence layer
+│   ├── index.js             # Express API server
+│   ├── metrics.js           # Aggregation logic
+│   ├── Dockerfile
 │   └── package.json
 │
-├── simulation-orchestrator/
-│   ├── index.js          # Spawns Docker containers (V2)
+├── cli/                      # Reporting tools
+│   ├── report.js            # CLI report generator
 │   └── package.json
 │
-├── simulation-agent/
-│   ├── agent.js          # Enhanced AI agent with multi-factor behavior
-│   ├── package.json
-│   └── Dockerfile        # Container definition
+├── data/                     # CSV datasets
+│   ├── merchants.csv
+│   ├── merchants_large.csv
+│   ├── merchants_high_income.csv
+│   └── merchants_low_income.csv
 │
+├── merchant-generator/       # CSV-driven profile generator
+│   ├── index.js
+│   ├── csvProcessor.js
+│   ├── Dockerfile
+│   └── package.json
+│
+├── simulation-orchestrator/  # Container orchestration
+│   ├── index.js
+│   └── package.json
+│
+├── simulation-agent/         # AI behavior agent
+│   ├── agent.js
+│   ├── Dockerfile
+│   └── package.json
+│
+├── docker-compose.yml
+├── .gitignore
 └── README.md
 ```
 
-## Version 2 Enhancements
+## Troubleshooting
 
-✅ CSV data ingestion with validation
-✅ Multi-factor behavior modeling (income, literacy, device)
-✅ Enhanced metrics (completion time, failures, avg latency)
-✅ File upload support for custom datasets
-✅ Automatic data normalization and transformation
+### Docker not running
 
-## Future Enhancements (Version 3)
+**Error:** "Cannot connect to Docker daemon"
 
-- Add real network throttling with `tc` and `netem`
-- Implement parallel container execution
-- Add metrics collection and visualization
-- Store insights in time-series database
-- Add web dashboard for real-time monitoring
-- Implement agent learning/adaptation over time
-- Support for multiple CSV files and batch processing
-- Real-time streaming of agent insights
+**Solution:**
+1. Open Docker Desktop
+2. Wait for it to fully start
+3. Verify: `docker ps`
+
+### Port already in use
+
+**Error:** "Port 3000 already in use"
+
+**Solution:**
+```bash
+# Windows
+netstat -ano | findstr :3000
+taskkill /PID <PID> /F
+```
+
+### Agents can't reach Insight Service
+
+**Error:** "Could not reach Insight Service"
+
+**Solution:**
+```bash
+# On Windows/Mac, use special hostname
+cd simulation-orchestrator
+set INSIGHT_SERVICE_URL=http://host.docker.internal:3000
+npm start
+```
+
+### No data in report
+
+**Error:** "No simulation data available yet"
+
+**Solution:**
+1. Ensure insight service is running
+2. Run simulation orchestrator
+3. Wait for agents to complete
+4. Then run report
+
+## Version History
+
+### Version 3.0 - Insight & Decision Layer
+- Added Insight Service for event collection
+- Implemented CLI reporting tool
+- Added experience scoring and recommendations
+- Event-driven architecture
+
+### Version 2.0 - CSV Data Pipeline
+- CSV data ingestion with validation
+- Multi-factor behavior modeling
+- Enhanced metrics and insights
+- File upload support
+
+### Version 1.0 - Basic Simulation
+- Mock merchant generation
+- Docker-based agent simulation
+- Console log outputs
+
+## Future Enhancements
+
+- Persistent storage (PostgreSQL/MongoDB)
+- Real-time dashboard (React/Vue frontend)
+- WebSocket streaming of live events
+- Advanced ML-based experience prediction
+- Multi-region simulation support
+- Historical trend analysis
+- A/B testing simulation comparison
+- Real network throttling with tc/netem
 
 ## License
 
 MIT - Prototype/Educational Use
+
+---
+
+**Need Help?** Check the troubleshooting section or review the API endpoints documentation above.
