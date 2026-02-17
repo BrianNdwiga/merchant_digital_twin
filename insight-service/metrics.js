@@ -20,12 +20,21 @@ function clearEvents() {
 }
 
 // Get all merchant summaries (final outcomes)
-function getMerchantSummaries() {
+function getMerchantSummaries(scenarioId = null) {
   const summaries = {};
   
   events.forEach(event => {
     if (event.event === 'SUMMARY') {
-      summaries[event.merchantId] = event.summary;
+      // Filter by scenario if specified
+      if (scenarioId && event.scenarioId !== scenarioId) {
+        return;
+      }
+      
+      const key = scenarioId ? event.merchantId : `${event.scenarioId}_${event.merchantId}`;
+      summaries[key] = {
+        ...event.summary,
+        scenarioId: event.scenarioId
+      };
     }
   });
   
@@ -33,8 +42,8 @@ function getMerchantSummaries() {
 }
 
 // Calculate overall summary insights
-function getSummaryInsights() {
-  const summaries = getMerchantSummaries();
+function getSummaryInsights(scenarioId = null) {
+  const summaries = getMerchantSummaries(scenarioId);
   
   if (summaries.length === 0) {
     return {
@@ -260,5 +269,6 @@ module.exports = {
   getSummaryInsights,
   getInsightsByNetwork,
   getInsightsByLiteracy,
-  getInsightsByScenario
+  getInsightsByScenario,
+  events  // Export for comparison module
 };

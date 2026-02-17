@@ -1,0 +1,12 @@
+{
+  "scenarioId": "BASELINE",
+  "description": "Current production flow - existing user journey",
+  "latencyMultiplier": 1.0,
+  "retryBonus": 0,
+  "successProbabilityBonus": 0,
+  "metadata": {
+    "version": "1.0",
+    "author": "Product Team",
+    "createdAt": "2026-02-18"
+  }
+}

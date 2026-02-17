@@ -1,0 +1,17 @@
+{
+  "scenarioId": "ENHANCED_SUPPORT",
+  "description": "Enhanced user support - contextual help and guidance",
+  "latencyMultiplier": 1.1,
+  "retryBonus": 2,
+  "successProbabilityBonus": 0.2,
+  "metadata": {
+    "version": "1.0",
+    "author": "Product Team",
+    "createdAt": "2026-02-18",
+    "changes": [
+      "Added inline help tooltips",
+      "Contextual guidance for low literacy users",
+      "Improved retry messaging"
+    ]
+  }
+}

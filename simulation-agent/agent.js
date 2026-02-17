@@ -44,7 +44,15 @@ function getMerchantProfile() {
   }
   
   try {
-    return JSON.parse(profileJson);
+    const profile = JSON.parse(profileJson);
+    
+    // Extract scenario configuration if present
+    if (profile.scenarioConfig) {
+      console.log(`📋 Scenario: ${profile.scenarioId || 'UNKNOWN'}`);
+      console.log(`   Latency: ${profile.scenarioConfig.latencyMultiplier}x | Retry Bonus: +${profile.scenarioConfig.retryBonus}`);
+    }
+    
+    return profile;
   } catch (error) {
     console.error('ERROR: Failed to parse MERCHANT_PROFILE JSON:', error.message);
     process.exit(1);
@@ -56,11 +64,16 @@ function logInsight(data) {
   console.log(JSON.stringify(data, null, 2));
 }
 
-// Simulate network delay based on profile
-async function simulateNetworkDelay(networkProfile) {
-  const latency = NETWORK_LATENCY[networkProfile] || 500;
+// Simulate network delay based on profile and scenario config
+async function simulateNetworkDelay(networkProfile, scenarioConfig) {
+  const baseLatency = NETWORK_LATENCY[networkProfile] || 500;
+  
+  // Apply scenario latency multiplier if present
+  const latencyMultiplier = scenarioConfig?.latencyMultiplier || 1.0;
+  const adjustedLatency = baseLatency * latencyMultiplier;
+  
   // Add some randomness (±20%)
-  const actualLatency = latency + (Math.random() * 0.4 - 0.2) * latency;
+  const actualLatency = adjustedLatency + (Math.random() * 0.4 - 0.2) * adjustedLatency;
   await sleep(Math.round(actualLatency));
   return Math.round(actualLatency);
 }
@@ -101,12 +114,21 @@ async function runAgentSimulation() {
   
   console.log(`\n🤖 Agent started for merchant: ${merchant.merchantId}`);
   console.log(`📱 Device: ${merchant.deviceType} | 📡 Network: ${merchant.networkProfile}`);
-  console.log(`🎯 Issue: ${merchant.issueType} | 🔄 Max retries: ${merchant.retryThreshold}\n`);
+  console.log(`🎯 Issue: ${merchant.issueType} | 🔄 Max retries: ${merchant.retryThreshold}`);
+  
+  // Apply scenario retry bonus if present
+  const scenarioConfig = merchant.scenarioConfig || {};
+  const retryBonus = scenarioConfig.retryBonus || 0;
+  const maxAttempts = merchant.retryThreshold + retryBonus;
+  
+  if (retryBonus > 0) {
+    console.log(`🎬 Scenario bonus: +${retryBonus} retries (total: ${maxAttempts})`);
+  }
+  console.log('');
   
   let attempts = 0;
   let success = false;
   let totalLatency = 0;
-  const maxAttempts = merchant.retryThreshold;
   const startTime = Date.now();
   
   // Simulate initial delay (agent thinking/loading)
@@ -119,8 +141,8 @@ async function runAgentSimulation() {
   while (attempts < maxAttempts && !success) {
     attempts++;
     
-    // Simulate network latency
-    const latency = await simulateNetworkDelay(merchant.networkProfile);
+    // Simulate network latency with scenario config
+    const latency = await simulateNetworkDelay(merchant.networkProfile, scenarioConfig);
     totalLatency += latency;
     
     // Determine if this attempt succeeds
@@ -136,13 +158,17 @@ async function runAgentSimulation() {
     const deviceBonus = merchant.deviceType === 'ios' ? 0.1 :
                        merchant.deviceType === 'android_mid' ? 0.05 : 0;
     
-    const successProbability = 0.35 + literacyBonus + incomeBonus + deviceBonus + (merchant.patienceScore * 0.2);
+    // Apply scenario success probability bonus if present
+    const scenarioBonus = scenarioConfig.successProbabilityBonus || 0;
+    
+    const successProbability = 0.35 + literacyBonus + incomeBonus + deviceBonus + (merchant.patienceScore * 0.2) + scenarioBonus;
     
     success = Math.random() < successProbability;
     
-    // Prepare event data
+    // Prepare event data with scenario ID
     const eventData = {
       merchantId: merchant.merchantId,
+      scenarioId: merchant.scenarioId || 'UNKNOWN',
       scenario: merchant.issueType.toUpperCase(),
       networkProfile: merchant.networkProfile,
       digitalLiteracy: merchant.digitalLiteracy,
@@ -205,9 +231,10 @@ async function runAgentSimulation() {
   });
   console.log('─'.repeat(50) + '\n');
   
-  // Send summary to Insight Service
+  // Send summary to Insight Service with scenario ID
   await sendEventToInsightService({
     merchantId: merchant.merchantId,
+    scenarioId: merchant.scenarioId || 'UNKNOWN',
     event: 'SUMMARY',
     summary: summaryData,
     timestamp: Date.now()

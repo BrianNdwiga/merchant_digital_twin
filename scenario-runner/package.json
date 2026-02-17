@@ -1,0 +1,14 @@
+{
+  "name": "scenario-runner",
+  "version": "1.0.0",
+  "description": "Multi-scenario simulation orchestrator",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "dev": "nodemon index.js"
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "nodemon": "^3.0.2"
+  }
+}

@@ -34,6 +34,25 @@ services:
     environment:
       - NODE_ENV=production
 
+  # Scenario Runner - Multi-scenario orchestration
+  scenario-runner:
+    build:
+      context: ./scenario-runner
+      dockerfile: Dockerfile
+    container_name: scenario-runner
+    depends_on:
+      - insight-service
+      - merchant-generator
+    networks:
+      - digital-twin-network
+    environment:
+      - NODE_ENV=production
+      - MERCHANT_GENERATOR_URL=http://merchant-generator:3001/generate-merchants-from-csv
+      - INSIGHT_SERVICE_URL=http://insight-service:3000
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ./scenarios:/app/scenarios:ro
+
 networks:
   digital-twin-network:
     driver: bridge

@@ -1,41 +1,47 @@
 # Digital Twin Simulation System
 
-A data-driven simulation platform that spawns AI agents in Docker containers to simulate merchant behavior, collect insights, and produce actionable intelligence for evaluating customer experience before production rollout.
+A data-driven simulation platform that spawns AI agents in Docker containers to simulate merchant behavior across multiple scenarios, enabling product teams to compare alternative flows before production rollout.
 
-## Current Version: 3.0 - Insight & Decision Layer
+## Current Version: 4.0 - Scenario-Based Experimentation Engine
 
-### What's New in V3
+### What's New in V4
 
-- 🧠 **Insight Service** - Intelligence layer that collects and aggregates simulation events
-- 📊 **Real-time Analytics** - Metrics calculation and experience scoring
-- 📋 **CLI Reporting** - Beautiful terminal reports with recommendations
-- 🔄 **Event-Driven Architecture** - Agents send structured events to insight service
-- 🐳 **Docker Networking** - Services communicate via Docker network
-- 📈 **Breakdown Analytics** - Insights grouped by network, literacy, and scenario
+- 🎬 **Scenario Engine** - Run simulations across multiple product flow variations
+- 📊 **Scenario Comparison** - Automatically compare BASELINE vs NEW FLOW outcomes
+- 🔄 **Multi-Scenario Orchestration** - Clone merchants across scenarios for fair comparison
+- 📈 **Comparative Analytics** - Success rate deltas, retry reduction, experience score improvements
+- 🎯 **Automated Recommendations** - AI-driven scenario selection based on performance
+- 📋 **CLI Comparison Reports** - Beautiful terminal reports comparing scenarios
 
 ## System Architecture
 
 ```
+Scenario Configurations (JSON)
+         ↓
 CSV Data → Merchant Generator (Port 3001)
-                ↓
-    Simulation Orchestrator
-                ↓
-    Docker Containers (AI Agents)
-                ↓
-    Insight Service (Port 3000) ← Events from all agents
-                ↓
-    Aggregated Metrics & Intelligence
-                ↓
-    CLI Report Tool (Terminal Output)
+         ↓
+Scenario Runner (clones merchants per scenario)
+         ↓
+Simulation Orchestrator
+         ↓
+Docker Containers (AI Agents) × Scenarios
+         ↓
+Insight Service (Port 3000) ← Events tagged by scenario
+         ↓
+Scenario Comparison Engine
+         ↓
+CLI Comparison Report
 ```
 
 ## Components
 
-1. **Insight Service** - Collects events, calculates metrics, provides insights API
-2. **Merchant Generator** - CSV-driven merchant profile generator with REST API
-3. **Simulation Orchestrator** - Spawns Docker containers for each merchant
-4. **AI Agent** - Simulates merchant behavior and sends events to insight service
-5. **CLI Report Tool** - Fetches and displays formatted insights with recommendations
+1. **Scenario Runner** (NEW) - Orchestrates multi-scenario simulations
+2. **Scenario Configurations** (NEW) - JSON files defining flow variations
+3. **Insight Service** - Collects events, calculates metrics per scenario, provides comparison API
+4. **Merchant Generator** - CSV-driven merchant profile generator with REST API
+5. **Simulation Orchestrator** - Spawns Docker containers for each merchant
+6. **AI Agent** - Simulates merchant behavior with scenario-specific adjustments
+7. **CLI Comparison Tool** (NEW) - Compares scenarios and provides recommendations
 
 ## Prerequisites
 
@@ -53,6 +59,7 @@ cd insight-service && npm install && cd ..
 cd merchant-generator && npm install && cd ..
 cd simulation-orchestrator && npm install && cd ..
 cd simulation-agent && npm install && cd ..
+cd scenario-runner && npm install && cd ..
 cd cli && npm install && cd ..
 ```
 
@@ -95,23 +102,136 @@ Server running on http://localhost:3001
 ✅ Loaded 8 merchants into cache
 ```
 
-**Terminal 3 - Run Simulation:**
+**Terminal 3 - Run Multi-Scenario Simulation:**
 ```bash
-cd simulation-orchestrator
+cd scenario-runner
 npm start
 ```
 
-This will spawn 8 Docker containers, each simulating a merchant and sending events to the insight service.
+This will:
+- Load all scenario configurations from `/scenarios`
+- Fetch merchants from generator
+- Clone merchants for each scenario
+- Spawn Docker containers for each merchant × scenario combination
+- Send events tagged with scenario IDs to insight service
 
-**Terminal 4 - View Report:**
+**Terminal 4 - Compare Scenarios:**
 ```bash
 cd cli
-npm run report
+npm run compare
+```
+
+Or compare specific scenarios:
+```bash
+npm run compare BASELINE SIMPLIFIED_FLOW
 ```
 
 ## Expected Output
 
-### CLI Report Example
+### Scenario Runner Console
+
+```
+🎯 Digital Twin Scenario Experimentation Engine
+📊 Multi-Scenario Simulation Runner
+══════════════════════════════════════════════════════════════════
+
+📋 Loading scenario configurations...
+📋 Loaded 3 scenario configurations:
+   - BASELINE: Current production flow
+   - SIMPLIFIED_FLOW: Reduced verification steps
+   - ENHANCED_SUPPORT: Enhanced user support
+
+📡 Fetching merchant profiles...
+✅ Loaded 8 merchant profiles
+
+🔄 Starting multi-scenario simulations...
+   Total simulations: 8 merchants × 3 scenarios = 24 agents
+
+══════════════════════════════════════════════════════════════════
+🎬 Running Scenario: BASELINE
+   Current production flow - existing user journey
+   Latency Multiplier: 1x
+   Retry Bonus: +0
+   Success Bonus: +0%
+══════════════════════════════════════════════════════════════════
+
+🚀 Spawning 8 agents for BASELINE...
+   ✓ M001 completed
+   ✓ M002 completed
+   ...
+
+✅ Scenario BASELINE completed:
+   Agents spawned: 8
+   Successful: 8
+   Failed: 0
+```
+
+### CLI Comparison Report Example
+
+```
+═══════════════════════════════════════════════════════════════════
+  SCENARIO COMPARISON REPORT
+═══════════════════════════════════════════════════════════════════
+  Generated: 2/18/2026, 10:30:45 AM
+
+───────────────────────────────────────────────────────────────────
+  SCENARIO OVERVIEW
+───────────────────────────────────────────────────────────────────
+
+  📋 Scenario A: BASELINE
+     Merchants: 8
+     Success Rate: 75.0%
+     Avg Retries: 2.1
+     Avg Time: 4.5s
+     Experience Score: 0.58
+
+  📋 Scenario B: SIMPLIFIED_FLOW
+     Merchants: 8
+     Success Rate: 87.5%
+     Avg Retries: 1.6
+     Avg Time: 3.6s
+     Experience Score: 0.73
+
+───────────────────────────────────────────────────────────────────
+  PERFORMANCE COMPARISON
+───────────────────────────────────────────────────────────────────
+
+  Success Rate:
+     📈 +12.5% (SIMPLIFIED_FLOW vs BASELINE)
+
+  Retry Attempts:
+     ✅ Reduced by 0.5 attempts (23.8%)
+
+  Completion Time:
+     ⚡ Faster by 0.9s
+
+  Experience Score:
+     🟢 +0.15 points
+
+───────────────────────────────────────────────────────────────────
+  RECOMMENDATION
+───────────────────────────────────────────────────────────────────
+
+  🎯 Recommended Scenario: SIMPLIFIED_FLOW
+     Reason: Higher experience score (+0.15)
+     Confidence: MEDIUM (sample size: 8)
+
+───────────────────────────────────────────────────────────────────
+  ACTIONABLE INSIGHTS
+───────────────────────────────────────────────────────────────────
+
+  ✅ SIMPLIFIED_FLOW shows better performance
+     → Success rate improved significantly (+12.5%)
+     → Consider rolling out SIMPLIFIED_FLOW to production
+
+  💡 Next Steps:
+     1. Review SIMPLIFIED_FLOW implementation details
+     2. Run A/B test with real users (10-20% traffic)
+     3. Monitor production metrics closely
+     4. Gradual rollout if metrics hold
+
+═══════════════════════════════════════════════════════════════════
+```
 
 ```
 ═══════════════════════════════════════════════════════════════════
@@ -165,21 +285,113 @@ npm run report
 |--------|----------|-------------|
 | POST | `/simulation-event` | Receive events from agents |
 | GET | `/insights/summary` | Overall aggregated metrics |
+| GET | `/insights/scenario/:id` | Metrics for specific scenario |
+| GET | `/insights/compare?scenarioA=X&scenarioB=Y` | Compare two scenarios |
+| GET | `/insights/scenarios` | List all available scenarios |
 | GET | `/insights/by-network` | Breakdown by network profile |
 | GET | `/insights/by-literacy` | Breakdown by digital literacy |
 | GET | `/insights/by-scenario` | Breakdown by issue type |
 | DELETE | `/insights/clear` | Clear all stored events |
 | GET | `/health` | Health check |
 
-### Merchant Generator (Port 3001)
+### Example: Compare Scenarios
 
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| GET | `/generate-merchants-from-csv` | Get merchants from default CSV |
-| POST | `/generate-merchants-from-csv` | Upload custom CSV file |
-| GET | `/health` | Health check |
+```bash
+curl "http://localhost:3000/insights/compare?scenarioA=BASELINE&scenarioB=SIMPLIFIED_FLOW"
+```
+
+Response:
+```json
+{
+  "scenarioA": {
+    "id": "BASELINE",
+    "successRate": 0.75,
+    "experienceScore": 0.58
+  },
+  "scenarioB": {
+    "id": "SIMPLIFIED_FLOW",
+    "successRate": 0.88,
+    "experienceScore": 0.73
+  },
+  "comparison": {
+    "successRateImprovement": 0.13,
+    "experienceScoreDelta": 0.15
+  },
+  "recommendation": {
+    "recommendedScenario": "SIMPLIFIED_FLOW",
+    "reason": "Higher experience score (+0.15)",
+    "confidence": "MEDIUM"
+  }
+}
+```
 
 ## CSV Data Format
+
+## Scenario Configuration
+
+Scenarios are defined as JSON files in the `/scenarios` directory.
+
+### Scenario Schema
+
+```json
+{
+  "scenarioId": "SIMPLIFIED_FLOW",
+  "description": "Reduced verification steps",
+  "latencyMultiplier": 0.8,
+  "retryBonus": 1,
+  "successProbabilityBonus": 0.15,
+  "metadata": {
+    "version": "1.0",
+    "author": "Product Team",
+    "createdAt": "2026-02-18",
+    "changes": [
+      "Removed redundant verification step",
+      "Optimized API calls"
+    ]
+  }
+}
+```
+
+### Scenario Parameters
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| scenarioId | string | Unique identifier (e.g., "BASELINE", "SIMPLIFIED_FLOW") |
+| description | string | Human-readable description |
+| latencyMultiplier | float | Network latency multiplier (0.8 = 20% faster) |
+| retryBonus | integer | Additional retry attempts allowed |
+| successProbabilityBonus | float | Boost to success probability (0.15 = +15%) |
+
+### Provided Scenarios
+
+1. **BASELINE** - Current production flow (control group)
+2. **SIMPLIFIED_FLOW** - Streamlined UX with fewer steps
+3. **ENHANCED_SUPPORT** - Additional user guidance and help
+
+### Creating Custom Scenarios
+
+1. Create a new JSON file in `/scenarios`
+2. Define scenario parameters
+3. Run scenario-runner
+4. Compare results with CLI tool
+
+Example:
+```bash
+# Create new scenario
+echo '{
+  "scenarioId": "FAST_TRACK",
+  "description": "Express checkout for verified users",
+  "latencyMultiplier": 0.6,
+  "retryBonus": 0,
+  "successProbabilityBonus": 0.25
+}' > scenarios/fast-track.json
+
+# Run simulation
+cd scenario-runner && npm start
+
+# Compare
+cd cli && npm run compare BASELINE FAST_TRACK
+```
 
 ### Required Columns
 
@@ -226,41 +438,50 @@ experienceScore =
 
 ## Testing Workflow
 
-### 1. Health Checks
+### 1. Run Multi-Scenario Simulation
 
 ```bash
-curl http://localhost:3000/health  # Insight service
-curl http://localhost:3001/health  # Merchant generator
+# Start services
+cd insight-service && npm start  # Terminal 1
+cd merchant-generator && npm start  # Terminal 2
+
+# Run all scenarios
+cd scenario-runner && npm start  # Terminal 3
 ```
 
-### 2. View Insights via API
+### 2. Compare Scenarios
 
 ```bash
-curl http://localhost:3000/insights/summary
-curl http://localhost:3000/insights/by-network
-curl http://localhost:3000/insights/by-literacy
-curl http://localhost:3000/insights/by-scenario
+# Compare default (BASELINE vs first alternative)
+cd cli && npm run compare
+
+# Compare specific scenarios
+npm run compare BASELINE SIMPLIFIED_FLOW
+npm run compare SIMPLIFIED_FLOW ENHANCED_SUPPORT
 ```
 
-### 3. Test with Different Datasets
+### 3. View Scenario-Specific Insights
 
 ```bash
-# Upload custom CSV
+# Get metrics for specific scenario
+curl http://localhost:3000/insights/scenario/BASELINE
+curl http://localhost:3000/insights/scenario/SIMPLIFIED_FLOW
+
+# List all scenarios
+curl http://localhost:3000/insights/scenarios
+```
+
+### 4. Test with Different Merchant Datasets
+
+```bash
+# Upload different CSV
 curl -X POST -F "csvFile=@data/merchants_large.csv" http://localhost:3001/generate-merchants-from-csv
 
-# Run simulation
-cd simulation-orchestrator && npm start
+# Run scenarios with new data
+cd scenario-runner && npm start
 
-# View report
-cd cli && npm run report
-```
-
-### 4. Clear Data and Re-run
-
-```bash
-curl -X DELETE http://localhost:3000/insights/clear
-cd simulation-orchestrator && npm start
-cd cli && npm run report
+# Compare results
+cd cli && npm run compare
 ```
 
 ## Development Mode
@@ -298,38 +519,50 @@ npm start
 ```
 digital-twin-prototype/
 │
-├── insight-service/          # Intelligence layer
-│   ├── index.js             # Express API server
-│   ├── metrics.js           # Aggregation logic
+├── scenarios/                    # NEW - Scenario configurations
+│   ├── baseline.json
+│   ├── simplified-flow.json
+│   └── enhanced-support.json
+│
+├── scenario-runner/              # NEW - Multi-scenario orchestrator
+│   ├── index.js
 │   ├── Dockerfile
 │   └── package.json
 │
-├── cli/                      # Reporting tools
-│   ├── report.js            # CLI report generator
+├── insight-service/              # UPDATED - Scenario comparison
+│   ├── index.js
+│   ├── metrics.js
+│   ├── comparison.js            # NEW
+│   ├── Dockerfile
 │   └── package.json
 │
-├── data/                     # CSV datasets
+├── cli/                          # UPDATED - Comparison tool
+│   ├── report.js
+│   ├── compare.js               # NEW
+│   └── package.json
+│
+├── data/
 │   ├── merchants.csv
 │   ├── merchants_large.csv
 │   ├── merchants_high_income.csv
 │   └── merchants_low_income.csv
 │
-├── merchant-generator/       # CSV-driven profile generator
+├── merchant-generator/
 │   ├── index.js
 │   ├── csvProcessor.js
 │   ├── Dockerfile
 │   └── package.json
 │
-├── simulation-orchestrator/  # Container orchestration
+├── simulation-orchestrator/
 │   ├── index.js
 │   └── package.json
 │
-├── simulation-agent/         # AI behavior agent
+├── simulation-agent/             # UPDATED - Scenario-aware
 │   ├── agent.js
 │   ├── Dockerfile
 │   └── package.json
 │
-├── docker-compose.yml
+├── docker-compose.yml            # UPDATED
 ├── .gitignore
 └── README.md
 ```
@@ -379,6 +612,13 @@ npm start
 4. Then run report
 
 ## Version History
+
+### Version 4.0 - Scenario-Based Experimentation Engine
+- Added Scenario Runner for multi-scenario orchestration
+- Scenario configuration system (JSON-based)
+- Scenario comparison engine with automated recommendations
+- CLI comparison tool for scenario analysis
+- Scenario-aware agent behavior adjustments
 
 ### Version 3.0 - Insight & Decision Layer
 - Added Insight Service for event collection

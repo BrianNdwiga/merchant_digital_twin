@@ -4,7 +4,8 @@
   "description": "CLI tools for Digital Twin simulation reporting",
   "main": "report.js",
   "scripts": {
-    "report": "node report.js"
+    "report": "node report.js",
+    "compare": "node compare.js"
   },
   "bin": {
     "dt-report": "./report.js"

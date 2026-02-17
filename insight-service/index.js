@@ -7,6 +7,7 @@ const {
   getInsightsByScenario,
   clearEvents 
 } = require('./metrics');
+const { compareScenarios, getAvailableScenarios } = require('./comparison');
 
 const app = express();
 const PORT = 3000;
@@ -58,15 +59,72 @@ app.post('/simulation-event', (req, res) => {
   }
 });
 
-// Endpoint 2: Get summary insights
+// Endpoint 2: Get summary insights (optionally filtered by scenario)
 app.get('/insights/summary', (req, res) => {
   try {
-    const summary = getSummaryInsights();
+    const scenarioId = req.query.scenarioId || null;
+    const summary = getSummaryInsights(scenarioId);
     res.json(summary);
   } catch (error) {
     console.error('Error generating summary:', error);
     res.status(500).json({
       error: 'Failed to generate summary',
+      message: error.message
+    });
+  }
+});
+
+// Endpoint: Get insights for specific scenario
+app.get('/insights/scenario/:scenarioId', (req, res) => {
+  try {
+    const { scenarioId } = req.params;
+    const summary = getSummaryInsights(scenarioId);
+    res.json(summary);
+  } catch (error) {
+    console.error('Error generating scenario insights:', error);
+    res.status(500).json({
+      error: 'Failed to generate scenario insights',
+      message: error.message
+    });
+  }
+});
+
+// Endpoint: Compare two scenarios
+app.get('/insights/compare', (req, res) => {
+  try {
+    const { scenarioA, scenarioB } = req.query;
+    
+    if (!scenarioA || !scenarioB) {
+      return res.status(400).json({
+        error: 'Missing parameters',
+        message: 'Both scenarioA and scenarioB query parameters are required',
+        example: '/insights/compare?scenarioA=BASELINE&scenarioB=SIMPLIFIED_FLOW'
+      });
+    }
+    
+    const comparison = compareScenarios(scenarioA, scenarioB);
+    res.json(comparison);
+  } catch (error) {
+    console.error('Error comparing scenarios:', error);
+    res.status(500).json({
+      error: 'Failed to compare scenarios',
+      message: error.message
+    });
+  }
+});
+
+// Endpoint: Get list of available scenarios
+app.get('/insights/scenarios', (req, res) => {
+  try {
+    const scenarios = getAvailableScenarios();
+    res.json({
+      scenarios,
+      count: scenarios.length
+    });
+  } catch (error) {
+    console.error('Error getting scenarios:', error);
+    res.status(500).json({
+      error: 'Failed to get scenarios',
       message: error.message
     });
   }
@@ -138,12 +196,15 @@ app.listen(PORT, () => {
   console.log('=' .repeat(60));
   console.log(`Server running on http://localhost:${PORT}`);
   console.log('\nAvailable endpoints:');
-  console.log('  POST   /simulation-event       - Receive agent events');
-  console.log('  GET    /insights/summary       - Overall metrics');
-  console.log('  GET    /insights/by-network    - Network breakdown');
-  console.log('  GET    /insights/by-literacy   - Literacy breakdown');
-  console.log('  GET    /insights/by-scenario   - Scenario breakdown');
-  console.log('  DELETE /insights/clear         - Clear all events');
-  console.log('  GET    /health                 - Health check');
+  console.log('  POST   /simulation-event         - Receive agent events');
+  console.log('  GET    /insights/summary         - Overall metrics');
+  console.log('  GET    /insights/scenario/:id    - Scenario-specific metrics');
+  console.log('  GET    /insights/compare         - Compare two scenarios');
+  console.log('  GET    /insights/scenarios       - List available scenarios');
+  console.log('  GET    /insights/by-network      - Network breakdown');
+  console.log('  GET    /insights/by-literacy     - Literacy breakdown');
+  console.log('  GET    /insights/by-scenario     - Scenario breakdown');
+  console.log('  DELETE /insights/clear           - Clear all events');
+  console.log('  GET    /health                   - Health check');
   console.log('=' .repeat(60));
 });

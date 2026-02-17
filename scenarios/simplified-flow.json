@@ -1,0 +1,17 @@
+{
+  "scenarioId": "SIMPLIFIED_FLOW",
+  "description": "Reduced verification steps - streamlined UX with fewer friction points",
+  "latencyMultiplier": 0.8,
+  "retryBonus": 1,
+  "successProbabilityBonus": 0.15,
+  "metadata": {
+    "version": "1.0",
+    "author": "Product Team",
+    "createdAt": "2026-02-18",
+    "changes": [
+      "Removed redundant verification step",
+      "Optimized API calls",
+      "Improved error messaging"
+    ]
+  }
+}
