@@ -237,7 +237,7 @@ function ScenarioTesting() {
                 <strong>
                   {comparisonResults.deltas.avgTime < 0 ? 'decreased' : 'increased'}
                 </strong>{' '}
-                by {Math.abs(comparisonResults.deltas.avgTime / 1000).toFixed(1)}s.
+                by {comparisonResults.deltas.avgTime != null ? Math.abs(comparisonResults.deltas.avgTime / 1000).toFixed(1) : '0'}s.
               </p>
             </div>
           </div>
@@ -261,6 +261,7 @@ function ScenarioTesting() {
 
 function ComparisonMetric({ label, baseline, modified, delta, format, higherIsBetter }) {
   const formatValue = (value) => {
+    if (value == null) return 'N/A';
     if (format === 'percentage') {
       return `${(value * 100).toFixed(1)}%`;
     } else if (format === 'time') {
@@ -272,6 +273,7 @@ function ComparisonMetric({ label, baseline, modified, delta, format, higherIsBe
   };
 
   const formatDelta = (value) => {
+    if (value == null) return 'N/A';
     const prefix = value > 0 ? '+' : '';
     if (format === 'percentage') {
       return `${prefix}${(value * 100).toFixed(1)}%`;

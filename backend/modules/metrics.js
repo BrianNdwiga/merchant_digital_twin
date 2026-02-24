@@ -24,7 +24,8 @@ function getMerchantSummaries(scenarioId = null) {
   const summaries = {};
   
   events.forEach(event => {
-    if (event.event === 'SUMMARY') {
+    // Accept both 'SUMMARY' and 'ONBOARDING_SUMMARY' event types
+    if (event.event === 'SUMMARY' || event.event === 'ONBOARDING_SUMMARY') {
       if (scenarioId && event.scenarioId !== scenarioId) {
         return;
       }
@@ -51,6 +52,8 @@ function getSummaryInsights(scenarioId = null) {
       averageCompletionTimeMs: 0,
       averageRetries: 0,
       experienceScore: 0,
+      successRatePercent: '0%',
+      averageCompletionTimeSec: 0,
       message: 'No simulation data available yet'
     };
   }
@@ -59,17 +62,17 @@ function getSummaryInsights(scenarioId = null) {
   const successfulMerchants = summaries.filter(s => s.success).length;
   const successRate = successfulMerchants / totalMerchants;
   
-  const totalCompletionTime = summaries.reduce((sum, s) => sum + (s.completionTimeMs || 0), 0);
+  const totalCompletionTime = summaries.reduce((sum, s) => sum + (s.completionTimeMs || s.timeBeforeFailure || 0), 0);
   const averageCompletionTimeMs = Math.round(totalCompletionTime / totalMerchants);
   
-  const totalAttempts = summaries.reduce((sum, s) => sum + s.totalAttempts, 0);
-  const averageRetries = parseFloat((totalAttempts / totalMerchants).toFixed(2));
+  const totalAttempts = summaries.reduce((sum, s) => sum + (s.totalAttempts || 0), 0);
+  const averageRetries = totalAttempts > 0 ? parseFloat((totalAttempts / totalMerchants).toFixed(2)) : 0;
   
   const totalExperienceScore = summaries.reduce((sum, s) => sum + (s.experienceScore || 0), 0);
   const avgExperienceScore = parseFloat((totalExperienceScore / totalMerchants).toFixed(2));
   
   const calculatedExperienceScore = parseFloat(
-    (successRate * 0.5 - (averageRetries - 1) * 0.1 + avgExperienceScore * 0.4).toFixed(2)
+    (successRate * 0.5 - (averageRetries > 0 ? (averageRetries - 1) * 0.1 : 0) + avgExperienceScore * 0.4).toFixed(2)
   );
   
   return {

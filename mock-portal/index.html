@@ -1,0 +1,1032 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Lipa Na M-PESA Portal</title>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --green: #00a850; --green-dark: #007a3d; --green-light: #e6f7ee; --green-mid: #00c85a;
+    --red: #e63946; --text: #0d1b0f; --text-2: #3d5248; --text-3: #7a9086;
+    --border: #d4e8dc; --bg: #f5faf6; --white: #ffffff;
+    --shadow: 0 2px 24px rgba(0,168,80,0.10); --shadow-lg: 0 8px 48px rgba(0,168,80,0.18);
+  }
+  body { font-family: 'Plus Jakarta Sans', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
+
+  /* PAGE TRANSITIONS */
+  .page { display: none; animation: fadeIn 0.35s ease; }
+  .page.active { display: block; }
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
+
+  /* NAV */
+  nav {
+    background: var(--white); border-bottom: 1.5px solid var(--border);
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 0 48px; height: 68px; position: sticky; top: 0; z-index: 100;
+    box-shadow: 0 2px 12px rgba(0,168,80,0.07);
+  }
+  .logo { display: flex; align-items: center; gap: 10px; cursor: pointer; }
+  .logo-icon { width: 38px; height: 38px; background: var(--green); border-radius: 10px; display: flex; align-items: center; justify-content: center; }
+  .logo-name { font-size: 1.18rem; font-weight: 800; letter-spacing: -0.5px; color: var(--green-dark); }
+  .logo-sub { font-size: 0.72rem; font-weight: 500; color: var(--text-3); letter-spacing: 0.08em; text-transform: uppercase; }
+  nav ul { display: flex; gap: 6px; list-style: none; align-items: center; }
+  nav ul li a {
+    font-size: 0.875rem; font-weight: 600; color: var(--text-2); text-decoration: none;
+    padding: 8px 16px; border-radius: 8px; transition: all 0.18s; cursor: pointer;
+  }
+  nav ul li a:hover { background: var(--green-light); color: var(--green-dark); }
+  nav ul li a.nav-active { background: var(--green-light); color: var(--green-dark); }
+  .btn-nav { background: var(--green) !important; color: #fff !important; }
+  .btn-nav:hover { background: var(--green-dark) !important; }
+
+  /* BREADCRUMB */
+  .breadcrumb {
+    max-width: 1200px; margin: 0 auto; padding: 18px 24px 0;
+    display: flex; align-items: center; gap: 8px; font-size: 0.8rem; color: var(--text-3);
+  }
+  .breadcrumb span { cursor: pointer; transition: color 0.15s; }
+  .breadcrumb span:hover { color: var(--green); }
+  .breadcrumb .sep { color: var(--border); }
+  .breadcrumb .current { color: var(--text-2); font-weight: 600; cursor: default; }
+
+  /* WRAPPER */
+  .wrap { max-width: 1200px; margin: 0 auto; padding: 32px 24px 64px; }
+
+  /* BUTTONS */
+  .btn-primary {
+    background: var(--green); color: #fff; font-weight: 700; font-size: 0.9rem;
+    padding: 13px 28px; border-radius: 10px; border: none; cursor: pointer; font-family: inherit;
+    transition: all 0.2s; box-shadow: 0 4px 16px rgba(0,168,80,0.3);
+  }
+  .btn-primary:hover { background: var(--green-dark); transform: translateY(-1px); box-shadow: 0 6px 20px rgba(0,168,80,0.4); }
+  .btn-secondary {
+    background: transparent; color: var(--text-2); font-weight: 600; font-size: 0.9rem;
+    padding: 13px 24px; border-radius: 10px; border: 1.5px solid var(--border);
+    cursor: pointer; font-family: inherit; transition: all 0.2s;
+  }
+  .btn-secondary:hover { border-color: var(--green); color: var(--green); }
+
+  /* ── SCREEN 1: HERO ── */
+  .hero { background: var(--white); border-radius: 24px; box-shadow: var(--shadow); overflow: hidden; border: 1.5px solid var(--border); }
+  .hero-inner { display: grid; grid-template-columns: 1fr 1fr; min-height: 460px; }
+  .hero-left { padding: 64px 56px; display: flex; flex-direction: column; justify-content: center; background: linear-gradient(135deg, #f5faf6 0%, #edf7f1 100%); }
+  .badge { display: inline-flex; align-items: center; gap: 7px; background: var(--green-light); color: var(--green-dark); padding: 6px 14px; border-radius: 100px; font-size: 0.75rem; font-weight: 700; letter-spacing: 0.06em; margin-bottom: 24px; width: fit-content; }
+  .badge-dot { width: 7px; height: 7px; background: var(--green); border-radius: 50%; animation: pulse 2s infinite; }
+  @keyframes pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.6;transform:scale(1.3)} }
+  .hero-left h1 { font-size: 2.6rem; font-weight: 800; line-height: 1.15; letter-spacing: -1px; color: var(--text); margin-bottom: 16px; }
+  .hero-left h1 span { color: var(--green); }
+  .hero-left p { color: var(--text-2); font-size: 1rem; line-height: 1.7; margin-bottom: 36px; max-width: 380px; }
+  .hero-actions { display: flex; gap: 12px; align-items: center; }
+  .hero-right { background: linear-gradient(160deg, var(--green-dark) 0%, #003d1f 100%); display: flex; align-items: center; justify-content: center; position: relative; overflow: hidden; padding: 40px; }
+  .hero-right::before { content: ''; position: absolute; inset: 0; background: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.04'%3E%3Ccircle cx='30' cy='30' r='3'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E"); }
+  .phone-mock { width: 220px; background: #0a2e15; border-radius: 32px; padding: 20px 16px; box-shadow: 0 32px 64px rgba(0,0,0,0.4); border: 3px solid rgba(255,255,255,0.1); position: relative; z-index: 1; }
+  .phone-screen { background: #fff; border-radius: 20px; overflow: hidden; }
+  .phone-header { background: var(--green); padding: 14px 16px; text-align: center; }
+  .phone-header p { color: #fff; font-size: 0.75rem; font-weight: 700; }
+  .phone-body { padding: 16px; }
+  .phone-body .amount { font-size: 1.5rem; font-weight: 800; color: var(--green-dark); text-align: center; margin-bottom: 4px; }
+  .phone-body .amount-label { font-size: 0.7rem; color: var(--text-3); text-align: center; margin-bottom: 16px; }
+  .phone-row { display: flex; justify-content: space-between; margin-bottom: 10px; }
+  .phone-row .lbl { font-size: 0.72rem; color: var(--text-3); }
+  .phone-row .val { font-size: 0.72rem; font-weight: 700; color: var(--text); font-family: 'DM Mono', monospace; }
+  .phone-confirm { background: var(--green); border-radius: 8px; padding: 10px; text-align: center; margin-top: 14px; }
+  .phone-confirm p { color: #fff; font-size: 0.75rem; font-weight: 700; }
+  .stats-row { display: flex; gap: 24px; margin-top: 28px; padding-top: 28px; border-top: 1.5px solid var(--border); }
+  .stat { display: flex; flex-direction: column; gap: 3px; }
+  .stat-num { font-size: 1.5rem; font-weight: 800; color: var(--green-dark); }
+  .stat-label { font-size: 0.75rem; color: var(--text-3); font-weight: 500; }
+
+  /* HOW IT WORKS */
+  .how-section { margin-top: 48px; }
+  .how-section h2 { font-size: 1.5rem; font-weight: 800; text-align: center; margin-bottom: 8px; }
+  .how-section .sub { text-align: center; color: var(--text-2); font-size: 0.9rem; margin-bottom: 40px; }
+  .steps-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; }
+  .how-step { background: var(--white); border-radius: 16px; padding: 28px 20px; text-align: center; border: 1.5px solid var(--border); position: relative; }
+  .how-step::after { content: '→'; position: absolute; right: -16px; top: 50%; transform: translateY(-50%); font-size: 1.2rem; color: var(--green); font-weight: 700; z-index: 1; }
+  .how-step:last-child::after { display: none; }
+  .step-num { width: 44px; height: 44px; background: var(--green); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 1rem; font-weight: 800; color: white; margin: 0 auto 16px; }
+  .how-step h4 { font-size: 0.9rem; font-weight: 800; margin-bottom: 8px; color: var(--text); }
+  .how-step p { font-size: 0.78rem; color: var(--text-2); line-height: 1.5; }
+
+  /* ── SCREEN 2: PRODUCTS ── */
+  .page-header { margin-bottom: 32px; }
+  .page-header h1 { font-size: 1.8rem; font-weight: 800; letter-spacing: -0.5px; margin-bottom: 8px; }
+  .page-header p { color: var(--text-2); font-size: 0.95rem; line-height: 1.6; }
+  .product-cards { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+  .product-card {
+    background: var(--white); border: 1.5px solid var(--border); border-radius: 20px;
+    padding: 32px; cursor: pointer; transition: all 0.2s; position: relative; overflow: hidden;
+  }
+  .product-card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 4px; background: linear-gradient(90deg, var(--green), var(--green-mid)); transform: scaleX(0); transform-origin: left; transition: transform 0.3s; }
+  .product-card:hover { border-color: var(--green); box-shadow: var(--shadow-lg); transform: translateY(-3px); }
+  .product-card:hover::before { transform: scaleX(1); }
+  .product-icon-wrap { width: 52px; height: 52px; background: var(--green-light); border-radius: 14px; display: flex; align-items: center; justify-content: center; margin-bottom: 18px; }
+  .product-card h3 { font-size: 1.1rem; font-weight: 800; color: var(--green-dark); margin-bottom: 10px; line-height: 1.3; }
+  .product-card > p { font-size: 0.85rem; color: var(--text-2); line-height: 1.65; margin-bottom: 18px; }
+  .product-features { list-style: none; display: flex; flex-direction: column; gap: 7px; margin-bottom: 24px; }
+  .product-features li { font-size: 0.82rem; color: var(--text-2); display: flex; align-items: flex-start; gap: 8px; line-height: 1.4; }
+  .product-features li::before { content: '✓'; color: var(--green); font-weight: 800; flex-shrink: 0; }
+  .tag { display: inline-block; background: var(--green-light); color: var(--green-dark); font-size: 0.72rem; font-weight: 700; padding: 4px 10px; border-radius: 100px; margin-bottom: 20px; }
+
+  /* ── SCREEN 3: DETAILS ── */
+  .details-card { background: var(--white); border-radius: 24px; box-shadow: var(--shadow); border: 1.5px solid var(--border); overflow: hidden; }
+  .details-header { background: linear-gradient(135deg, var(--green-dark), #006030); padding: 36px 48px; color: white; display: flex; justify-content: space-between; align-items: center; }
+  .details-header h2 { font-size: 1.7rem; font-weight: 800; margin-bottom: 6px; }
+  .details-header p { font-size: 0.9rem; opacity: 0.85; }
+  .details-badge { background: rgba(255,255,255,0.15); padding: 8px 18px; border-radius: 100px; font-size: 0.78rem; font-weight: 700; border: 1px solid rgba(255,255,255,0.3); white-space: nowrap; }
+  .details-body { display: grid; grid-template-columns: 1fr 1fr 1fr; }
+  .details-col { padding: 36px; border-right: 1.5px solid var(--border); }
+  .details-col:last-child { border-right: none; }
+  .col-title { font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: var(--green); margin-bottom: 20px; font-family: 'DM Mono', monospace; }
+  .feat-item { display: flex; align-items: flex-start; gap: 10px; margin-bottom: 14px; }
+  .feat-check { width: 20px; height: 20px; background: var(--green); border-radius: 50%; display: flex; align-items: center; justify-content: center; flex-shrink: 0; margin-top: 1px; }
+  .feat-text { font-size: 0.83rem; color: var(--text-2); line-height: 1.5; }
+  .feat-text strong { color: var(--text); font-weight: 700; }
+  .settle-cards { display: flex; flex-direction: column; gap: 10px; margin-top: 6px; }
+  .settle-card { background: var(--green-light); border: 1.5px solid var(--border); border-radius: 12px; padding: 14px 16px; }
+  .settle-label { font-size: 0.68rem; font-weight: 700; color: var(--green); font-family: 'DM Mono', monospace; margin-bottom: 3px; text-transform: uppercase; }
+  .settle-title { font-size: 0.85rem; font-weight: 700; color: var(--text); }
+  .rate-box { background: var(--green-light); border-radius: 12px; padding: 14px 16px; margin-bottom: 10px; border-left: 3px solid var(--green); }
+  .rate-box p { font-size: 0.82rem; color: var(--text-2); line-height: 1.55; }
+  .rate-box p strong { color: var(--green-dark); font-weight: 700; }
+  .details-footer { padding: 24px 48px; background: var(--bg); border-top: 1.5px solid var(--border); display: flex; align-items: center; justify-content: space-between; }
+  .details-footer p { font-size: 0.85rem; color: var(--text-2); }
+
+  /* ── SCREEN 4: FORM ── */
+  .form-card { background: var(--white); border-radius: 24px; box-shadow: var(--shadow); border: 1.5px solid var(--border); overflow: hidden; }
+  .form-top { background: var(--green); padding: 28px 48px; color: white; }
+  .form-top h2 { font-size: 1.4rem; font-weight: 800; }
+  .form-top p { font-size: 0.85rem; opacity: 0.85; margin-top: 4px; }
+  .form-layout { display: grid; grid-template-columns: 260px 1fr; min-height: 520px; }
+  .form-sidebar { padding: 32px 24px; border-right: 1.5px solid var(--border); background: var(--bg); }
+  .sidebar-label { font-size: 0.68rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.12em; color: var(--text-3); margin-bottom: 24px; font-family: 'DM Mono', monospace; }
+  .step-item { display: flex; align-items: flex-start; gap: 12px; position: relative; padding-bottom: 8px; }
+  .step-item:not(:last-child)::after { content: ''; position: absolute; left: 15px; top: 34px; width: 2px; height: calc(100% - 4px); background: var(--border); }
+  .step-circle { width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 0.82rem; font-weight: 800; flex-shrink: 0; z-index: 1; border: 2px solid var(--border); background: var(--white); color: var(--text-3); }
+  .step-circle.active { background: var(--green); border-color: var(--green); color: white; }
+  .step-circle.done { background: var(--green-light); border-color: var(--green); color: var(--green); }
+  .step-info { padding-top: 5px; }
+  .step-name { font-size: 0.85rem; font-weight: 700; color: var(--text-3); }
+  .step-name.active { color: var(--green-dark); }
+  .step-name.done { color: var(--green); }
+  .step-sub { font-size: 0.73rem; color: var(--text-3); margin-top: 2px; }
+  .sub-step { font-size: 0.75rem; color: var(--text-3); padding-left: 44px; margin-bottom: 5px; display: flex; align-items: center; gap: 7px; }
+  .sub-step::before { content: ''; width: 5px; height: 5px; border-radius: 50%; background: var(--green); display: block; flex-shrink: 0; }
+  .tip-box { margin-top: 28px; padding: 16px; background: var(--green-light); border-radius: 12px; border: 1.5px solid var(--border); }
+  .tip-title { font-size: 0.75rem; font-weight: 700; color: var(--green-dark); margin-bottom: 6px; }
+  .tip-body { font-size: 0.75rem; color: var(--text-2); line-height: 1.5; }
+
+  /* FORM BODY */
+  .form-body { padding: 40px 48px; overflow-y: auto; }
+  .form-page { display: none; }
+  .form-page.active { display: block; }
+  .fsection-title { font-size: 0.9rem; font-weight: 800; color: var(--text); padding-bottom: 12px; border-bottom: 1.5px solid var(--border); margin-bottom: 22px; display: flex; justify-content: space-between; }
+  .fsection-title span { color: var(--text-3); font-size: 0.78rem; font-weight: 500; }
+  .fgrid3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; margin-bottom: 26px; }
+  .fgrid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 26px; }
+  .fgroup { display: flex; flex-direction: column; gap: 6px; }
+  .fgroup.full { grid-column: 1/-1; }
+  label { font-size: 0.78rem; font-weight: 700; color: var(--text-2); }
+  .req { color: var(--red); }
+  input, select {
+    height: 44px; border: 1.5px solid var(--border); border-radius: 10px;
+    padding: 0 14px; font-size: 0.875rem; font-family: inherit; color: var(--text);
+    background: var(--white); outline: none; transition: border-color 0.18s, box-shadow 0.18s; appearance: none;
+  }
+  input::placeholder { color: #b0c4b8; }
+  input:focus, select:focus { border-color: var(--green); box-shadow: 0 0 0 3px rgba(0,168,80,0.12); }
+  .hint { font-size: 0.72rem; color: var(--text-3); }
+  .sel-wrap { position: relative; }
+  .sel-wrap::after { content: '▾'; position: absolute; right: 14px; top: 50%; transform: translateY(-50%); color: var(--text-3); font-size: 0.85rem; pointer-events: none; }
+  select { width: 100%; cursor: pointer; padding-right: 36px; }
+
+  /* Payment radio */
+  .pay-section { background: var(--bg); border-radius: 14px; padding: 24px; border: 1.5px solid var(--border); margin-bottom: 28px; }
+  .pay-title { font-size: 0.875rem; font-weight: 700; color: var(--text); margin-bottom: 4px; }
+  .pay-sub { font-size: 0.8rem; color: var(--text-3); margin-bottom: 16px; }
+  .radio-opt { display: flex; align-items: center; gap: 12px; padding: 13px 16px; border-radius: 10px; border: 1.5px solid var(--border); cursor: pointer; background: var(--white); margin-bottom: 8px; transition: all 0.18s; }
+  .radio-opt.selected { border-color: var(--green); background: var(--green-light); }
+  .rdot { width: 18px; height: 18px; border-radius: 50%; border: 2px solid var(--border); flex-shrink: 0; position: relative; transition: all 0.18s; }
+  .radio-opt.selected .rdot { border-color: var(--green); background: var(--green); }
+  .radio-opt.selected .rdot::after { content: ''; position: absolute; width: 7px; height: 7px; background: white; border-radius: 50%; top: 50%; left: 50%; transform: translate(-50%,-50%); }
+  .rtxt { font-size: 0.85rem; font-weight: 600; color: var(--text); }
+  .rsub { font-size: 0.75rem; color: var(--text-3); margin-top: 1px; }
+  .form-footer { display: flex; justify-content: flex-end; gap: 12px; padding-top: 8px; }
+
+  /* SCREEN 5: DOCUMENTS */
+  .doc-upload-area { border: 2px dashed var(--border); border-radius: 16px; padding: 40px; text-align: center; cursor: pointer; transition: all 0.2s; background: var(--bg); margin-bottom: 20px; }
+  .doc-upload-area:hover { border-color: var(--green); background: var(--green-light); }
+  .upload-icon { width: 52px; height: 52px; background: var(--green-light); border-radius: 14px; display: flex; align-items: center; justify-content: center; margin: 0 auto 14px; }
+  .doc-upload-area h4 { font-size: 0.95rem; font-weight: 700; margin-bottom: 6px; }
+  .doc-upload-area p { font-size: 0.8rem; color: var(--text-3); }
+  .doc-preview { display: none; background: var(--green-light); border: 1.5px solid var(--green); border-radius: 12px; padding: 14px 18px; margin-bottom: 12px; align-items: center; gap: 12px; }
+  .doc-preview.visible { display: flex; }
+  .doc-preview-name { font-size: 0.85rem; font-weight: 600; color: var(--green-dark); flex: 1; }
+  .doc-remove { font-size: 0.78rem; color: var(--red); cursor: pointer; font-weight: 700; }
+  .doc-types { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 24px; }
+  .doc-type { padding: 6px 14px; background: var(--white); border: 1.5px solid var(--border); border-radius: 100px; font-size: 0.75rem; font-weight: 600; color: var(--text-2); cursor: pointer; transition: all 0.18s; }
+  .doc-type.sel { background: var(--green); border-color: var(--green); color: white; }
+
+  /* SCREEN 6: SUMMARY */
+  .summary-card { background: var(--white); border-radius: 16px; border: 1.5px solid var(--border); overflow: hidden; margin-bottom: 20px; }
+  .summary-card-header { padding: 16px 24px; background: var(--green-light); border-bottom: 1.5px solid var(--border); font-size: 0.85rem; font-weight: 700; color: var(--green-dark); display: flex; justify-content: space-between; align-items: center; }
+  .edit-link { font-size: 0.78rem; font-weight: 600; color: var(--green); cursor: pointer; text-decoration: underline; }
+  .summary-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; padding: 20px 24px; gap: 16px; }
+  .summary-field { display: flex; flex-direction: column; gap: 3px; }
+  .sf-label { font-size: 0.72rem; color: var(--text-3); font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; }
+  .sf-value { font-size: 0.875rem; font-weight: 700; color: var(--text); }
+  .success-banner { background: linear-gradient(135deg, var(--green-dark), #006030); border-radius: 20px; padding: 48px; text-align: center; color: white; }
+  .success-icon { width: 72px; height: 72px; background: rgba(255,255,255,0.2); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 20px; font-size: 2rem; }
+  .success-banner h2 { font-size: 1.8rem; font-weight: 800; margin-bottom: 10px; }
+  .success-banner p { opacity: 0.85; font-size: 0.95rem; line-height: 1.6; max-width: 400px; margin: 0 auto 28px; }
+  .success-ref { background: rgba(255,255,255,0.15); border-radius: 10px; padding: 12px 20px; display: inline-block; font-family: 'DM Mono', monospace; font-size: 1rem; font-weight: 700; margin-bottom: 28px; }
+  .hidden { display: none !important; }
+</style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav>
+  <div class="logo" onclick="goTo('home')">
+    <div class="logo-icon">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+        <path d="M12 2L4 7v10l8 5 8-5V7L12 2z" fill="white" opacity="0.9"/>
+        <path d="M8 12h8M12 8v8" stroke="#00a850" stroke-width="2" stroke-linecap="round"/>
+      </svg>
+    </div>
+    <div>
+      <div class="logo-name">Lipa Na M-PESA</div>
+      <div class="logo-sub">Business Portal</div>
+    </div>
+  </div>
+  <ul>
+    <li><a onclick="goTo('home')" id="nav-home" class="nav-active">Home</a></li>
+    <li><a onclick="goTo('myapps')" id="nav-myapps">My Applications</a></li>
+    <li><a onclick="goTo('products')" class="btn-nav" id="nav-apply">Apply Now</a></li>
+    <li><a href="#">Business Support</a></li>
+    <li><a href="#">FAQs</a></li>
+  </ul>
+</nav>
+
+<!-- ── PAGE: HOME ── -->
+<div id="page-home" class="page active">
+  <div id="bc-home" class="breadcrumb hidden"></div>
+  <div class="wrap">
+    <div class="hero">
+      <div class="hero-inner">
+        <div class="hero-left">
+          <div class="badge"><span class="badge-dot"></span> M-PESA for Business</div>
+          <h1>Welcome to<br><span>Lipa Na M-PESA</span></h1>
+          <p>Lipa Na M-PESA application portal enables businesses and individuals to apply for M-PESA solutions to collect and disburse funds — easily, step by step.</p>
+          <div class="hero-actions">
+            <button class="btn-primary" onclick="goTo('products')">Apply Now</button>
+            <button class="btn-secondary" onclick="goTo('myapps')">My Applications</button>
+          </div>
+          <div class="stats-row">
+            <div class="stat"><div class="stat-num">2M+</div><div class="stat-label">Active Tills</div></div>
+            <div class="stat"><div class="stat-num">99.9%</div><div class="stat-label">Uptime</div></div>
+            <div class="stat"><div class="stat-num">Free</div><div class="stat-label">Setup</div></div>
+          </div>
+        </div>
+        <div class="hero-right">
+          <div class="phone-mock">
+            <div class="phone-screen">
+              <div class="phone-header"><p>M-PESA BUSINESS TILL</p></div>
+              <div class="phone-body">
+                <div class="amount">KSh 2,500</div>
+                <div class="amount-label">Payment Received</div>
+                <div class="phone-row"><span class="lbl">From</span><span class="val">07XX XXX XXX</span></div>
+                <div class="phone-row"><span class="lbl">Till No.</span><span class="val">123456</span></div>
+                <div class="phone-row"><span class="lbl">Ref</span><span class="val">SHOP001</span></div>
+                <div class="phone-row"><span class="lbl">Date</span><span class="val">24 Feb 2026</span></div>
+                <div class="phone-confirm"><p>✓ Confirmed</p></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="how-section">
+      <h2>How Does it Work?</h2>
+      <p class="sub">Here is a step by step guide showcasing how to sign up for your Lipa na M-PESA account</p>
+      <div class="steps-row">
+        <div class="how-step">
+          <div class="step-num">1</div>
+          <h4>Choose Product</h4>
+          <p>Select between Business Till (Buy Goods) or Short-Term Paybill based on your needs.</p>
+        </div>
+        <div class="how-step">
+          <div class="step-num">2</div>
+          <h4>Fill Application</h4>
+          <p>Provide your personal details, business information and preferred settlement method.</p>
+        </div>
+        <div class="how-step">
+          <div class="step-num">3</div>
+          <h4>Upload Documents</h4>
+          <p>Upload a clear copy of your National ID, Passport or Alien ID.</p>
+        </div>
+        <div class="how-step">
+          <div class="step-num">4</div>
+          <h4>Get Your Till</h4>
+          <p>Review, submit and receive your Lipa na M-PESA till number within 24 hours.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── PAGE: PRODUCTS ── -->
+<div id="page-products" class="page">
+  <div class="breadcrumb">
+    <span onclick="goTo('home')">Home</span>
+    <span class="sep">›</span>
+    <span class="current">Choose Product</span>
+  </div>
+  <div class="wrap">
+    <div class="page-header">
+      <h1>Lipa Na M-PESA Products</h1>
+      <p>Choose the right product for your business needs. Both options allow you to start accepting cashless payments immediately.</p>
+    </div>
+    <div class="product-cards">
+      <div class="product-card" onclick="goTo('details-till')">
+        <div class="product-icon-wrap">
+          <svg width="26" height="26" viewBox="0 0 24 24" fill="none"><rect x="3" y="6" width="18" height="13" rx="2" stroke="#00a850" stroke-width="2"/><path d="M3 10h18" stroke="#00a850" stroke-width="2"/><path d="M7 15h2M11 15h6" stroke="#00a850" stroke-width="1.5" stroke-linecap="round"/></svg>
+        </div>
+        <div class="tag">Most Popular</div>
+        <h3>M-PESA Business Till<br><span style="font-weight:500;font-size:0.9rem">(Buy Goods Till)</span></h3>
+        <p>Enables business owners to collect payments on the till and use the money collected to make other transactions directly from the till.</p>
+        <ul class="product-features">
+          <li>Pay to another Buy Goods Till</li>
+          <li>Pay to a mobile number</li>
+          <li>Pay to utilities (Paybill) till</li>
+          <li>Withdraw cash at an M-PESA agent</li>
+          <li>Sell airtime and earn commission</li>
+        </ul>
+        <p style="font-size:0.78rem;color:var(--text-3);margin-bottom:22px;">Ideal for retail, supermarkets, fuel stations, restaurants, salons.</p>
+        <button class="btn-primary" style="width:100%" onclick="event.stopPropagation();goTo('details-till')">View Details & Apply →</button>
+      </div>
+      <div class="product-card" onclick="goTo('details-paybill')">
+        <div class="product-icon-wrap">
+          <svg width="26" height="26" viewBox="0 0 24 24" fill="none"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2z" stroke="#00a850" stroke-width="2"/><path d="M12 6v6l4 2" stroke="#00a850" stroke-width="2" stroke-linecap="round"/></svg>
+        </div>
+        <div class="tag" style="background:#fff3e0;color:#b36a00;">Fundraising</div>
+        <h3>Short-Term Paybill</h3>
+        <p>A product that allows for fundraising of funds for different needs including medical bills, funerals, weddings, education, and charity or catastrophes.</p>
+        <ul class="product-features">
+          <li>Medical bill fundraising</li>
+          <li>Wedding and funeral fund collection</li>
+          <li>Education fund management</li>
+          <li>Charity and catastrophe support</li>
+          <li>Fund, Funeral Fund, Education Fund</li>
+        </ul>
+        <p style="font-size:0.78rem;color:var(--text-3);margin-bottom:22px;">Ideal for NGOs, community groups, social events and charitable causes.</p>
+        <button class="btn-secondary" style="width:100%;font-family:inherit;" onclick="event.stopPropagation();goTo('details-paybill')">View Details & Apply →</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── PAGE: TILL DETAILS ── -->
+<div id="page-details-till" class="page">
+  <div class="breadcrumb">
+    <span onclick="goTo('home')">Home</span><span class="sep">›</span>
+    <span onclick="goTo('products')">Products</span><span class="sep">›</span>
+    <span class="current">Individual Till Details</span>
+  </div>
+  <div class="wrap">
+    <div class="details-card">
+      <div class="details-header">
+        <div>
+          <h2>Individual Till (Buy Goods)</h2>
+          <p>Seamless funds collection and transaction from your till</p>
+        </div>
+        <div class="details-badge">0.55% per transaction</div>
+      </div>
+      <div class="details-body">
+        <div class="details-col">
+          <div class="col-title">Features</div>
+          <div class="feat-item"><div class="feat-check"><svg width="11" height="11" viewBox="0 0 12 12" fill="none"><path d="M2 6l3 3 5-5" stroke="white" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></div><div class="feat-text">Collect payments from businesses and customers on the till</div></div>
+          <div class="feat-item"><div class="feat-check"><svg width="11" height="11" viewBox="0 0 12 12" fill="none"><path d="M2 6l3 3 5-5" stroke="white" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></div><div class="feat-text">Make payments directly from your till — Pay Bill or Till</div></div>
+          <div class="feat-item"><div class="feat-check"><svg width="11" height="11" viewBox="0 0 12 12" fill="none"><path d="M2 6l3 3 5-5" stroke="white" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></div><div class="feat-text">Make payments to customers</div></div>
+          <div class="feat-item"><div class="feat-check"><svg width="11" height="11" viewBox="0 0 12 12" fill="none"><path d="M2 6l3 3 5-5" stroke="white" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></div><div class="feat-text">Access via USSD <strong>*234*2#</strong> or M-Pesa Business App</div></div>
+          <div class="feat-item"><div class="feat-check"><svg width="11" height="11" viewBox="0 0 12 12" fill="none"><path d="M2 6l3 3 5-5" stroke="white" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></div><div class="feat-text">Real-time, full statements</div></div>
+          <div class="feat-item"><div class="feat-check"><svg width="11" height="11" viewBox="0 0 12 12" fill="none"><path d="M2 6l3 3 5-5" stroke="white" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></div><div class="feat-text">Withdraw funds to nominated number or at M-PESA Agent</div></div>
+        </div>
+        <div class="details-col">
+          <div class="col-title">Requirements</div>
+          <div class="feat-item"><div class="feat-check"><svg width="11" height="11" viewBox="0 0 12 12" fill="none"><path d="M2 6l3 3 5-5" stroke="white" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></div><div class="feat-text"><strong>Application Form</strong> — completed online</div></div>
+          <div class="feat-item"><div class="feat-check"><svg width="11" height="11" viewBox="0 0 12 12" fill="none"><path d="M2 6l3 3 5-5" stroke="white" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></div><div class="feat-text"><strong>ID Documents</strong> — National ID, Passport, Alien ID, or Military ID</div></div>
+          <div style="height:20px"></div>
+          <div class="col-title">Settlement Options</div>
+          <div class="settle-cards">
+            <div class="settle-card"><div class="settle-label">Individual</div><div class="settle-title">Settle to owner's M-PESA</div></div>
+            <div class="settle-card"><div class="settle-label">Individual</div><div class="settle-title">Settle to owner's Bank Account</div></div>
+          </div>
+        </div>
+        <div class="details-col">
+          <div class="col-title">Rates and Charges</div>
+          <div class="rate-box"><p><strong>0.55% charge</strong>, not more than <strong>KShs 200</strong> per transaction for money collected on the till.</p></div>
+          <div class="rate-box"><p>Collections of <strong>Ksh 200 and below are FREE</strong>.</p></div>
+          <div class="rate-box"><p><strong>No customer charges</strong> for payments made using Lipa na M-PESA Buy Goods, except for payments made at fuel stations.</p></div>
+        </div>
+      </div>
+      <div class="details-footer">
+        <div>
+          <button class="btn-secondary" onclick="goTo('products')" style="font-family:inherit;margin-right:12px;">← Back to Products</button>
+        </div>
+        <button class="btn-primary" onclick="goTo('form')">Apply Now →</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── PAGE: PAYBILL DETAILS ── -->
+<div id="page-details-paybill" class="page">
+  <div class="breadcrumb">
+    <span onclick="goTo('home')">Home</span><span class="sep">›</span>
+    <span onclick="goTo('products')">Products</span><span class="sep">›</span>
+    <span class="current">Short-Term Paybill Details</span>
+  </div>
+  <div class="wrap">
+    <div class="details-card">
+      <div class="details-header">
+        <div>
+          <h2>Short-Term Paybill</h2>
+          <p>Fundraising and short-term fund collection made easy</p>
+        </div>
+        <div class="details-badge">Fundraising Product</div>
+      </div>
+      <div class="details-body">
+        <div class="details-col">
+          <div class="col-title">Use Cases</div>
+          <div class="feat-item"><div class="feat-check"><svg width="11" height="11" viewBox="0 0 12 12" fill="none"><path d="M2 6l3 3 5-5" stroke="white" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></div><div class="feat-text">Medical bill fundraising campaigns</div></div>
+          <div class="feat-item"><div class="feat-check"><svg width="11" height="11" viewBox="0 0 12 12" fill="none"><path d="M2 6l3 3 5-5" stroke="white" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></div><div class="feat-text">Wedding and funeral fund collection</div></div>
+          <div class="feat-item"><div class="feat-check"><svg width="11" height="11" viewBox="0 0 12 12" fill="none"><path d="M2 6l3 3 5-5" stroke="white" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></div><div class="feat-text">Education fund management</div></div>
+          <div class="feat-item"><div class="feat-check"><svg width="11" height="11" viewBox="0 0 12 12" fill="none"><path d="M2 6l3 3 5-5" stroke="white" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></div><div class="feat-text">Charity and catastrophe support</div></div>
+        </div>
+        <div class="details-col">
+          <div class="col-title">Requirements</div>
+          <div class="feat-item"><div class="feat-check"><svg width="11" height="11" viewBox="0 0 12 12" fill="none"><path d="M2 6l3 3 5-5" stroke="white" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></div><div class="feat-text"><strong>Application Form</strong> — completed online</div></div>
+          <div class="feat-item"><div class="feat-check"><svg width="11" height="11" viewBox="0 0 12 12" fill="none"><path d="M2 6l3 3 5-5" stroke="white" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></div><div class="feat-text"><strong>ID Documents</strong> — National ID, Passport, Alien ID, or Military ID</div></div>
+          <div class="feat-item"><div class="feat-check"><svg width="11" height="11" viewBox="0 0 12 12" fill="none"><path d="M2 6l3 3 5-5" stroke="white" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></div><div class="feat-text"><strong>Fund Description</strong> — purpose and target amount</div></div>
+        </div>
+        <div class="details-col">
+          <div class="col-title">Rates and Charges</div>
+          <div class="rate-box"><p>Standard M-PESA transaction charges apply based on amount sent.</p></div>
+          <div class="rate-box"><p>No additional charges for setting up a Short-Term Paybill account.</p></div>
+          <div class="rate-box"><p>Account <strong>valid for up to 90 days</strong> — renewable on request.</p></div>
+        </div>
+      </div>
+      <div class="details-footer">
+        <button class="btn-secondary" onclick="goTo('products')" style="font-family:inherit;">← Back to Products</button>
+        <button class="btn-primary" onclick="goTo('form')">Apply Now →</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── PAGE: FORM ── -->
+<div id="page-form" class="page">
+  <div class="breadcrumb">
+    <span onclick="goTo('home')">Home</span><span class="sep">›</span>
+    <span onclick="goTo('products')">Products</span><span class="sep">›</span>
+    <span onclick="goTo('details-till')">Individual Till</span><span class="sep">›</span>
+    <span class="current">Application Form</span>
+  </div>
+  <div class="wrap">
+    <div class="form-card">
+      <div class="form-top">
+        <h2>Apply for Individual Till</h2>
+        <p>Complete all required fields to submit your application</p>
+      </div>
+      <div class="form-layout">
+        <!-- SIDEBAR -->
+        <div class="form-sidebar">
+          <div class="sidebar-label">Progress</div>
+          <div class="step-item">
+            <div class="step-circle active" id="sc1">1</div>
+            <div class="step-info">
+              <div class="step-name active" id="sn1">Application Form</div>
+              <div class="step-sub">Personal and business info</div>
+            </div>
+          </div>
+          <div class="sub-step" id="substep1">Contact Details</div>
+          <div class="sub-step" id="substep2">Payment Details</div>
+          <div style="height:6px"></div>
+          <div class="step-item">
+            <div class="step-circle" id="sc2">2</div>
+            <div class="step-info">
+              <div class="step-name" id="sn2">Documents</div>
+              <div class="step-sub">Upload your ID</div>
+            </div>
+          </div>
+          <div style="height:6px"></div>
+          <div class="step-item">
+            <div class="step-circle" id="sc3">3</div>
+            <div class="step-info">
+              <div class="step-name" id="sn3">Summary and Review</div>
+              <div class="step-sub">Confirm and submit</div>
+            </div>
+          </div>
+          <div class="tip-box">
+            <div class="tip-title">💡 Tip</div>
+            <div class="tip-body">Have your National ID and M-PESA registered phone number ready before starting.</div>
+          </div>
+        </div>
+
+        <!-- FORM BODY -->
+        <div class="form-body">
+
+          <!-- FORM STEP 1 -->
+          <div class="form-page active" id="fp1">
+            <div class="fsection-title">Contact Details <span>* Required</span></div>
+            <div class="fgrid3">
+              <div class="fgroup">
+                <label>First Name <span class="req">*</span></label>
+                <input id="f_first" type="text" placeholder="As registered on ID">
+                <span class="hint">As registered on ID</span>
+              </div>
+              <div class="fgroup">
+                <label>Middle Name</label>
+                <input id="f_mid" type="text" placeholder="Middle name">
+              </div>
+              <div class="fgroup">
+                <label>Surname <span class="req">*</span></label>
+                <input id="f_last" type="text" placeholder="Surname">
+              </div>
+              <div class="fgroup">
+                <label>Phone Number <span class="req">*</span></label>
+                <input id="f_phone" type="tel" placeholder="07XX XXX XXX">
+              </div>
+              <div class="fgroup">
+                <label>ID Number <span class="req">*</span></label>
+                <input id="f_id" type="text" placeholder="National ID Number">
+              </div>
+              <div class="fgroup">
+                <label>Email Address</label>
+                <input id="f_email" type="email" placeholder="email@example.com">
+              </div>
+            </div>
+
+            <div class="fsection-title">Business Details</div>
+            <div class="fgrid3">
+              <div class="fgroup">
+                <label>Business Category <span class="req">*</span></label>
+                <div class="sel-wrap">
+                  <select id="f_cat" onchange="updateDescriptions()">
+                    <option value="">Select Category</option>
+                    <option>Retail</option>
+                    <option>Restaurant & Food</option>
+                    <option>Supermarket</option>
+                    <option>Fuel Station</option>
+                    <option>Salon & Beauty</option>
+                    <option>Healthcare</option>
+                    <option>Education</option>
+                    <option>Transport & Logistics</option>
+                    <option>Agriculture</option>
+                    <option>Technology</option>
+                    <option>Construction</option>
+                    <option>Entertainment</option>
+                    <option>Financial Services</option>
+                    <option>NGO / Charity</option>
+                    <option>Other</option>
+                  </select>
+                </div>
+              </div>
+              <div class="fgroup">
+                <label>Business Description <span class="req">*</span></label>
+                <div class="sel-wrap">
+                  <select id="f_desc">
+                    <option value="">Select Category first</option>
+                  </select>
+                </div>
+              </div>
+              <div class="fgroup">
+                <label>County <span class="req">*</span></label>
+                <div class="sel-wrap">
+                  <select id="f_county" onchange="updateRegions()">
+                    <option value="">Select County</option>
+                    <option>Nairobi</option><option>Mombasa</option><option>Kisumu</option><option>Nakuru</option>
+                    <option>Eldoret / Uasin Gishu</option><option>Kiambu</option><option>Machakos</option>
+                    <option>Nyeri</option><option>Meru</option><option>Kilifi</option>
+                    <option>Kakamega</option><option>Bungoma</option><option>Kericho</option>
+                    <option>Bomet</option><option>Nandi</option><option>Trans Nzoia</option>
+                    <option>Siaya</option><option>Homa Bay</option><option>Migori</option>
+                    <option>Kisii</option><option>Nyamira</option><option>Embu</option>
+                    <option>Kirinyaga</option><option>Murang'a</option><option>Nyandarua</option>
+                    <option>Laikipia</option><option>Samburu</option><option>Isiolo</option>
+                    <option>Marsabit</option><option>Turkana</option><option>West Pokot</option>
+                    <option>Baringo</option><option>Elgeyo Marakwet</option><option>Kajiado</option>
+                    <option>Makueni</option><option>Kitui</option><option>Tana River</option>
+                    <option>Taita Taveta</option><option>Kwale</option><option>Lamu</option>
+                    <option>Garissa</option><option>Wajir</option><option>Mandera</option>
+                    <option>Vihiga</option><option>Busia</option>
+                  </select>
+                </div>
+              </div>
+              <div class="fgroup">
+                <label>Region <span class="req">*</span></label>
+                <div class="sel-wrap">
+                  <select id="f_region">
+                    <option value="">Select County first</option>
+                  </select>
+                </div>
+              </div>
+              <div class="fgroup full">
+                <label>Business Physical Address <span class="req">*</span></label>
+                <input id="f_addr" type="text" placeholder="e.g. Tom Mboya Street, Nairobi CBD">
+              </div>
+            </div>
+
+            <div class="fsection-title">Payment Details</div>
+            <div class="pay-section">
+              <div class="pay-title">Where would you like to receive funds collected?</div>
+              <div class="pay-sub">Choose your preferred settlement method</div>
+              <div class="radio-opt selected" id="ro-mpesa" onclick="selectPayment('mpesa')">
+                <div class="rdot" id="rd-mpesa"></div>
+                <div>
+                  <div class="rtxt">M-Pesa</div>
+                  <div class="rsub">For collection of amounts less than 500,000 per day</div>
+                </div>
+              </div>
+              <div class="radio-opt" id="ro-bank" onclick="selectPayment('bank')">
+                <div class="rdot" id="rd-bank"></div>
+                <div>
+                  <div class="rtxt">Bank Account</div>
+                  <div class="rsub">For collection of amounts above 500,000 per day</div>
+                </div>
+              </div>
+              <div id="mpesa-fields" class="fgroup" style="margin-top:16px;">
+                <label>Phone Number <span class="req">*</span></label>
+                <input id="f_payphone" type="tel" placeholder="M-Pesa registered number to collect funds" style="max-width:320px;">
+                <span class="hint">M-Pesa registered number to collect funds</span>
+              </div>
+              <div id="bank-fields" class="hidden">
+                <div class="fgrid2" style="margin-top:16px;margin-bottom:0;">
+                  <div class="fgroup">
+                    <label>Bank Name <span class="req">*</span></label>
+                    <div class="sel-wrap">
+                      <select>
+                        <option value="">Select Bank</option>
+                        <option>KCB Bank</option><option>Equity Bank</option><option>Co-operative Bank</option>
+                        <option>NCBA Bank</option><option>Standard Chartered</option><option>Absa Bank</option>
+                        <option>DTB Bank</option><option>I&amp;M Bank</option><option>Family Bank</option>
+                        <option>Stanbic Bank</option><option>SBM Bank</option><option>HF Group</option>
+                      </select>
+                    </div>
+                  </div>
+                  <div class="fgroup">
+                    <label>Account Number <span class="req">*</span></label>
+                    <input type="text" placeholder="Bank account number">
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="form-footer">
+              <button class="btn-secondary" onclick="goTo('details-till')" style="font-family:inherit;">← Back</button>
+              <button class="btn-primary" onclick="nextFormStep(2)">Continue →</button>
+            </div>
+          </div>
+
+          <!-- FORM STEP 2: DOCUMENTS -->
+          <div class="form-page" id="fp2">
+            <div class="fsection-title">Upload Documents <span>Step 2 of 3</span></div>
+            <p style="font-size:0.85rem;color:var(--text-2);margin-bottom:24px;line-height:1.6;">Please upload a clear copy of your identification document. Accepted formats: JPG, PNG, PDF (max 5MB).</p>
+
+            <div style="margin-bottom:24px;">
+              <label style="margin-bottom:10px;display:block;">Select ID Type <span class="req">*</span></label>
+              <div class="doc-types">
+                <div class="doc-type sel" onclick="selectDocType(this)">National ID</div>
+                <div class="doc-type" onclick="selectDocType(this)">Passport</div>
+                <div class="doc-type" onclick="selectDocType(this)">Alien ID</div>
+                <div class="doc-type" onclick="selectDocType(this)">Military ID</div>
+              </div>
+            </div>
+
+            <div style="margin-bottom:24px;">
+              <label style="margin-bottom:10px;display:block;">Front of ID <span class="req">*</span></label>
+              <div class="doc-preview" id="prev-front">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8l-6-6z" stroke="#00a850" stroke-width="2"/><path d="M14 2v6h6M8 13h8M8 17h5" stroke="#00a850" stroke-width="1.5" stroke-linecap="round"/></svg>
+                <span class="doc-preview-name" id="prev-front-name">front_id.jpg</span>
+                <span class="doc-remove" onclick="removeDoc('front')">✕ Remove</span>
+              </div>
+              <div class="doc-upload-area" id="upload-front" onclick="fakeUpload('front')">
+                <div class="upload-icon">
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M17 8l-5-5-5 5M12 3v12" stroke="#00a850" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                </div>
+                <h4>Upload Front of ID</h4>
+                <p>Click to browse or drag and drop your file here</p>
+                <p style="margin-top:6px;font-size:0.72rem;color:var(--text-3);">JPG, PNG, PDF — Max 5MB</p>
+              </div>
+            </div>
+
+            <div style="margin-bottom:28px;">
+              <label style="margin-bottom:10px;display:block;">Back of ID <span class="req">*</span></label>
+              <div class="doc-preview" id="prev-back">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8l-6-6z" stroke="#00a850" stroke-width="2"/></svg>
+                <span class="doc-preview-name" id="prev-back-name">back_id.jpg</span>
+                <span class="doc-remove" onclick="removeDoc('back')">✕ Remove</span>
+              </div>
+              <div class="doc-upload-area" id="upload-back" onclick="fakeUpload('back')">
+                <div class="upload-icon">
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M17 8l-5-5-5 5M12 3v12" stroke="#00a850" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                </div>
+                <h4>Upload Back of ID</h4>
+                <p>Click to browse or drag and drop your file here</p>
+                <p style="margin-top:6px;font-size:0.72rem;color:var(--text-3);">JPG, PNG, PDF — Max 5MB</p>
+              </div>
+            </div>
+
+            <div class="form-footer">
+              <button class="btn-secondary" onclick="nextFormStep(1)" style="font-family:inherit;">← Back</button>
+              <button class="btn-primary" onclick="nextFormStep(3)">Continue →</button>
+            </div>
+          </div>
+
+          <!-- FORM STEP 3: SUMMARY -->
+          <div class="form-page" id="fp3">
+            <div class="fsection-title">Summary and Review <span>Step 3 of 3</span></div>
+            <p style="font-size:0.85rem;color:var(--text-2);margin-bottom:24px;line-height:1.6;">Please review your information before submitting. Click <strong>Edit</strong> on any section to make changes.</p>
+
+            <div class="summary-card">
+              <div class="summary-card-header">Contact Details <span class="edit-link" onclick="nextFormStep(1)">Edit</span></div>
+              <div class="summary-grid" id="sum-contact">
+                <div class="summary-field"><div class="sf-label">First Name</div><div class="sf-value" id="sum-first">—</div></div>
+                <div class="summary-field"><div class="sf-label">Middle Name</div><div class="sf-value" id="sum-mid">—</div></div>
+                <div class="summary-field"><div class="sf-label">Surname</div><div class="sf-value" id="sum-last">—</div></div>
+                <div class="summary-field"><div class="sf-label">Phone Number</div><div class="sf-value" id="sum-phone">—</div></div>
+                <div class="summary-field"><div class="sf-label">ID Number</div><div class="sf-value" id="sum-id">—</div></div>
+                <div class="summary-field"><div class="sf-label">Email</div><div class="sf-value" id="sum-email">—</div></div>
+              </div>
+            </div>
+
+            <div class="summary-card">
+              <div class="summary-card-header">Business Details <span class="edit-link" onclick="nextFormStep(1)">Edit</span></div>
+              <div class="summary-grid">
+                <div class="summary-field"><div class="sf-label">Category</div><div class="sf-value" id="sum-cat">—</div></div>
+                <div class="summary-field"><div class="sf-label">Description</div><div class="sf-value" id="sum-desc">—</div></div>
+                <div class="summary-field"><div class="sf-label">County</div><div class="sf-value" id="sum-county">—</div></div>
+                <div class="summary-field"><div class="sf-label">Region</div><div class="sf-value" id="sum-region">—</div></div>
+                <div class="summary-field" style="grid-column:1/-1"><div class="sf-label">Physical Address</div><div class="sf-value" id="sum-addr">—</div></div>
+              </div>
+            </div>
+
+            <div class="summary-card">
+              <div class="summary-card-header">Payment Details <span class="edit-link" onclick="nextFormStep(1)">Edit</span></div>
+              <div class="summary-grid">
+                <div class="summary-field"><div class="sf-label">Settlement Method</div><div class="sf-value" id="sum-pay">M-Pesa</div></div>
+                <div class="summary-field"><div class="sf-label">Collection Number</div><div class="sf-value" id="sum-payphone">—</div></div>
+              </div>
+            </div>
+
+            <div class="summary-card">
+              <div class="summary-card-header">Uploaded Documents <span class="edit-link" onclick="nextFormStep(2)">Edit</span></div>
+              <div class="summary-grid">
+                <div class="summary-field"><div class="sf-label">ID Type</div><div class="sf-value" id="sum-doctype">National ID</div></div>
+                <div class="summary-field"><div class="sf-label">Front of ID</div><div class="sf-value" id="sum-front">—</div></div>
+                <div class="summary-field"><div class="sf-label">Back of ID</div><div class="sf-value" id="sum-back">—</div></div>
+              </div>
+            </div>
+
+            <div style="background:var(--green-light);border:1.5px solid var(--green);border-radius:12px;padding:16px 20px;margin-bottom:24px;font-size:0.82rem;color:var(--text-2);line-height:1.6;">
+              By submitting this application, I confirm that all information provided is accurate and I agree to Safaricom's <strong style="color:var(--green-dark);">Terms and Conditions</strong> and <strong style="color:var(--green-dark);">Privacy Policy</strong>.
+            </div>
+
+            <div class="form-footer">
+              <button class="btn-secondary" onclick="nextFormStep(2)" style="font-family:inherit;">← Back</button>
+              <button class="btn-primary" onclick="goTo('success')">Submit Application ✓</button>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── PAGE: SUCCESS ── -->
+<div id="page-success" class="page">
+  <div class="wrap">
+    <div class="success-banner">
+      <div class="success-icon">✓</div>
+      <h2>Application Submitted!</h2>
+      <p>Your Lipa na M-PESA Individual Till application has been received. We'll review it and get back to you within 24–48 hours.</p>
+      <div class="success-ref">REF: LNM-2026-<span id="ref-num">082754</span></div>
+      <div style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap;">
+        <button class="btn-primary" style="background:white;color:var(--green-dark);" onclick="goTo('home')">Back to Home</button>
+        <button class="btn-secondary" style="border-color:rgba(255,255,255,0.4);color:white;" onclick="goTo('myapps')">My Applications</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── PAGE: MY APPLICATIONS ── -->
+<div id="page-myapps" class="page">
+  <div class="breadcrumb">
+    <span onclick="goTo('home')">Home</span><span class="sep">›</span>
+    <span class="current">My Applications</span>
+  </div>
+  <div class="wrap">
+    <div class="page-header">
+      <h1>My Applications</h1>
+      <p>Track the status of all your submitted Lipa na M-PESA applications.</p>
+    </div>
+    <div style="background:var(--white);border-radius:20px;border:1.5px solid var(--border);padding:64px;text-align:center;">
+      <div style="width:72px;height:72px;background:var(--green-light);border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 20px;font-size:2rem;">📋</div>
+      <h3 style="font-size:1.2rem;font-weight:800;margin-bottom:8px;">No applications yet</h3>
+      <p style="color:var(--text-2);font-size:0.9rem;margin-bottom:28px;">You haven't submitted any applications. Apply now to get your M-PESA till.</p>
+      <button class="btn-primary" onclick="goTo('products')">Apply Now →</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  // ── NAVIGATION ──
+  const pages = ['home','products','details-till','details-paybill','form','success','myapps'];
+  function goTo(id) {
+    pages.forEach(p => {
+      const el = document.getElementById('page-' + p);
+      if(el) el.classList.remove('active');
+    });
+    const target = document.getElementById('page-' + id);
+    if(target) { target.classList.add('active'); window.scrollTo({top:0,behavior:'smooth'}); }
+    // Update nav active state
+    ['nav-home','nav-myapps','nav-apply'].forEach(n => {
+      document.getElementById(n)?.classList.remove('nav-active');
+    });
+    if(id === 'home') document.getElementById('nav-home')?.classList.add('nav-active');
+    if(id === 'myapps') document.getElementById('nav-myapps')?.classList.add('nav-active');
+    if(['products','details-till','details-paybill','form'].includes(id)) document.getElementById('nav-apply')?.classList.add('nav-active');
+    // Generate ref number on success
+    if(id === 'success') document.getElementById('ref-num').textContent = Math.floor(100000 + Math.random()*900000);
+  }
+
+  // ── FORM STEPS ──
+  let currentFormStep = 1;
+  function nextFormStep(step) {
+    if(step === 3) populateSummary();
+    [1,2,3].forEach(i => {
+      document.getElementById('fp'+i).classList.remove('active');
+      const sc = document.getElementById('sc'+i);
+      const sn = document.getElementById('sn'+i);
+      if(i < step) { sc.classList.add('done'); sc.textContent='✓'; sc.classList.remove('active'); sn.classList.remove('active'); sn.classList.add('done'); }
+      else if(i === step) { sc.classList.add('active'); sc.classList.remove('done'); sc.textContent=i; sn.classList.add('active'); sn.classList.remove('done'); }
+      else { sc.classList.remove('active','done'); sc.textContent=i; sn.classList.remove('active','done'); }
+    });
+    document.getElementById('fp'+step).classList.add('active');
+    currentFormStep = step;
+    document.querySelector('.form-body').scrollTop = 0;
+  }
+
+  // ── DESCRIPTIONS BY CATEGORY ──
+  const descriptions = {
+    'Retail': ['General Retail Shop','Hardware Store','Electronics Shop','Clothing & Apparel','Pharmacy','Bookshop','Household Items','Mobile Phone Shop'],
+    'Restaurant & Food': ['Full Service Restaurant','Fast Food Outlet','Café / Coffee Shop','Bakery','Food Kiosk','Catering Services','Bar & Restaurant','Pizza Parlour'],
+    'Supermarket': ['Hypermarket','Convenience Store','Mini Supermarket','Wholesale Shop','Greengrocer','Butchery'],
+    'Fuel Station': ['Petroleum Station','LPG Gas Station','Service Station with Shop','Car Wash & Fuel','Autogas Station'],
+    'Salon & Beauty': ['Hair Salon','Barber Shop','Nail Spa','Beauty Parlour','Massage Therapy','Spa & Wellness Centre'],
+    'Healthcare': ['Clinic / Dispensary','Pharmacy / Chemist','Optical Centre','Dental Clinic','Veterinary Clinic','Medical Laboratory','Physiotherapy Centre'],
+    'Education': ['Primary School','Secondary School','College / University','Tutoring Centre','Driving School','Vocational Training','Early Childhood Centre'],
+    'Transport & Logistics': ['Matatu / PSV Operator','Courier & Delivery','Car Hire / Rental','Trucking & Haulage','Boda Boda Sacco','Taxi / Ride Hailing'],
+    'Agriculture': ['Farm Input Supply','Produce Market','Dairy / Milk Collection','Poultry Farm','Greenhouse','Agricultural Machinery'],
+    'Technology': ['IT Services','Software Development','Computer Repairs','Cybercafé','Digital Marketing','E-commerce Business'],
+    'Construction': ['Building Contractor','Real Estate Developer','Plumbing & Electrical','Architecture Firm','Interior Design','Property Management'],
+    'Entertainment': ['Cinema / Theatre','Events Planning','Sports Facility','Gaming Centre','Photography Studio','Music Studio'],
+    'Financial Services': ['Microfinance / SACCO','Forex Bureau','Insurance Agency','Investment Firm','Accounting / Audit Firm'],
+    'NGO / Charity': ['Registered NGO','Community Based Organization','Religious Organization','Charity Fund','Youth Group','Women\'s Group'],
+    'Other': ['Other Business Type']
+  };
+
+  function updateDescriptions() {
+    const cat = document.getElementById('f_cat').value;
+    const desc = document.getElementById('f_desc');
+    desc.innerHTML = '<option value="">Select Description</option>';
+    if(descriptions[cat]) {
+      descriptions[cat].forEach(d => {
+        const opt = document.createElement('option');
+        opt.textContent = d; desc.appendChild(opt);
+      });
+    }
+  }
+
+  // ── REGIONS BY COUNTY ──
+  const regions = {
+    'Nairobi': ['Westlands','Dagoretti North','Dagoretti South','Langata','Kibra','Roysambu','Kasarani','Ruaraka','Embakasi South','Embakasi North','Embakasi Central','Embakasi East','Embakasi West','Makadara','Kamukunji','Starehe','Mathare'],
+    'Mombasa': ['Changamwe','Jomvu','Kisauni','Nyali','Likoni','Mvita'],
+    'Kisumu': ['Kisumu East','Kisumu West','Kisumu Central','Seme','Nyando','Muhoroni','Nyakach'],
+    'Nakuru': ['Nakuru Town East','Nakuru Town West','Biashara','Naivasha','Gilgil','Kuresoi South','Kuresoi North','Molo','Njoro','Rongai','Subukia','Bahati'],
+    'Eldoret / Uasin Gishu': ['Ainabkoi','Kapseret','Kesses','Moiben','Soy','Turbo'],
+    'Kiambu': ['Gatundu South','Gatundu North','Juja','Thika Town','Ruiru','Githunguri','Kiambu','Kiambaa','Kabete','Kikuyu','Limuru','Lari'],
+    'Machakos': ['Masinga','Yatta','Kangundo','Matungulu','Kathiani','Mavoko','Machakos Town','Mwala'],
+    'Nyeri': ['Tetu','Kieni East','Kieni West','Mathira East','Mathira West','Othaya','Mukurweini','Nyeri Town'],
+    'Meru': ['Igembe South','Igembe Central','Igembe North','Tigania West','Tigania East','North Imenti','Buuri','Central Imenti','South Imenti'],
+    'Kilifi': ['Kilifi North','Kilifi South','Kaloleni','Rabai','Ganze','Malindi','Magarini'],
+    'Kakamega': ['Lugari','Likuyani','Malava','Lurambi','Navakholo','Mumias West','Mumias East','Matungu','Butere','Khwisero','Shinyalu','Ikolomani'],
+    'Bungoma': ['Mt. Elgon','Sirisia','Kabuchai','Bumula','Kanduyi','Webuye East','Webuye West','Kimilili','Tongaren'],
+    'Kericho': ['Kipkelion East','Kipkelion West','Ainamoi','Bureti','Belgut','Sigowet / Soin'],
+    'Bomet': ['Sotik','Chepalungu','Bomet East','Bomet Central','Konoin'],
+    'Nandi': ['Tinderet','Aldai','Nandi Hills','Chesumei','Emgwen','Mosop'],
+    'Trans Nzoia': ['Kwanza','Endebess','Saboti','Kiminini','Cherangany'],
+    'Siaya': ['Ugenya','Ugunja','Gem','Rarieda','Bondo','Nyatike'],
+    'Homa Bay': ['Kasipul','Kabondo Kasipul','Karachuonyo','Rangwe','Homa Bay Town','Ndhiwa','Suba North','Suba South'],
+    'Migori': ['Rongo','Awendo','Suna East','Suna West','Uriri','Nyatike','Kuria West','Kuria East'],
+    'Kisii': ['Bonchari','South Mugirango','Bomachoge Borabu','Bobasi','Bomachoge Chache','Nyaribari Masaba','Nyaribari Chache','Kitutu Chache North','Kitutu Chache South'],
+    'Nyamira': ['Kitutu Masaba','West Mugirango','North Mugirango','Borabu'],
+    'Embu': ['Manyatta','Runyenjes','Mbeere South','Mbeere North'],
+    'Kirinyaga': ['Mwea','Gichugu','Ndia','Kirinyaga Central'],
+    'Murang\'a': ['Kangema','Mathioya','Kigumo','Kiharu','Kandara','Gatanga','Kahuro','Murang\'a South'],
+    'Nyandarua': ['Kinangop','Kipipiri','Ol Kalou','Ol Jorok','Ndaragwa'],
+    'Laikipia': ['Laikipia West','Laikipia East','Laikipia North'],
+    'Samburu': ['Samburu West','Samburu North','Samburu East'],
+    'Isiolo': ['Isiolo North','Isiolo South'],
+    'Marsabit': ['Moyale','North Horr','Saku','Laisamis'],
+    'Turkana': ['Turkana North','Turkana West','Turkana Central','Loima','Turkana South','Turkana East'],
+    'West Pokot': ['Kapenguria','Sigor','Kacheliba','Pokot South'],
+    'Baringo': ['Tiaty','Baringo North','Baringo Central','Baringo South','Mogotio','Eldama Ravine'],
+    'Elgeyo Marakwet': ['Marakwet East','Marakwet West','Keiyo North','Keiyo South'],
+    'Kajiado': ['Kajiado North','Kajiado Central','Kajiado East','Kajiado West','Kajiado South'],
+    'Makueni': ['Mbooni','Kilome','Kaiti','Makueni','Kibwezi West','Kibwezi East'],
+    'Kitui': ['Mwingi North','Mwingi West','Mwingi Central','Kitui West','Kitui Rural','Kitui Central','Kitui East','Kitui South'],
+    'Tana River': ['Garsen','Galole','Bura'],
+    'Taita Taveta': ['Taveta','Wundanyi','Mwatate','Voi'],
+    'Kwale': ['Msambweni','Lungalunga','Matuga','Kinango'],
+    'Lamu': ['Lamu East','Lamu West'],
+    'Garissa': ['Garissa Township','Balambala','Lagdera','Dadaab','Fafi','Ijara'],
+    'Wajir': ['Wajir North','Wajir East','Tarbaj','Wajir West','Eldas','Wajir South'],
+    'Mandera': ['Mandera West','Banissa','Mandera North','Mandera South','Lafey','Mandera East'],
+    'Vihiga': ['Vihiga','Sabatia','Hamisi','Luanda','Emuhaya'],
+    'Busia': ['Teso North','Teso South','Nambale','Matayos','Butula','Funyula','Budalangi']
+  };
+
+  function updateRegions() {
+    const county = document.getElementById('f_county').value;
+    const reg = document.getElementById('f_region');
+    reg.innerHTML = '<option value="">Select Region</option>';
+    if(regions[county]) {
+      regions[county].forEach(r => {
+        const opt = document.createElement('option'); opt.textContent = r; reg.appendChild(opt);
+      });
+    }
+  }
+
+  // ── PAYMENT TOGGLE ──
+  let payMethod = 'mpesa';
+  function selectPayment(method) {
+    payMethod = method;
+    ['mpesa','bank'].forEach(m => {
+      document.getElementById('ro-'+m).classList.toggle('selected', m === method);
+    });
+    document.getElementById('mpesa-fields').classList.toggle('hidden', method !== 'mpesa');
+    document.getElementById('bank-fields').classList.toggle('hidden', method !== 'bank');
+  }
+
+  // ── DOC TYPE SELECT ──
+  function selectDocType(el) {
+    document.querySelectorAll('.doc-type').forEach(d => d.classList.remove('sel'));
+    el.classList.add('sel');
+  }
+
+  // ── FAKE UPLOAD ──
+  const fakeFiles = { front: null, back: null };
+  function fakeUpload(side) {
+    const names = ['national_id_front.jpg','national_id_back.jpg','id_document.pdf','passport_scan.jpg'];
+    const name = side === 'front' ? 'id_front_upload.jpg' : 'id_back_upload.jpg';
+    fakeFiles[side] = name;
+    document.getElementById('prev-'+side+'-name').textContent = name;
+    document.getElementById('prev-'+side).classList.add('visible');
+    document.getElementById('upload-'+side).style.display = 'none';
+  }
+  function removeDoc(side) {
+    fakeFiles[side] = null;
+    document.getElementById('prev-'+side).classList.remove('visible');
+    document.getElementById('upload-'+side).style.display = 'block';
+  }
+
+  // ── SUMMARY POPULATION ──
+  function populateSummary() {
+    const v = (id) => document.getElementById(id)?.value || '—';
+    document.getElementById('sum-first').textContent = v('f_first') || '—';
+    document.getElementById('sum-mid').textContent = v('f_mid') || '—';
+    document.getElementById('sum-last').textContent = v('f_last') || '—';
+    document.getElementById('sum-phone').textContent = v('f_phone') || '—';
+    document.getElementById('sum-id').textContent = v('f_id') || '—';
+    document.getElementById('sum-email').textContent = v('f_email') || '—';
+    document.getElementById('sum-cat').textContent = v('f_cat') || '—';
+    document.getElementById('sum-desc').textContent = v('f_desc') || '—';
+    document.getElementById('sum-county').textContent = v('f_county') || '—';
+    document.getElementById('sum-region').textContent = v('f_region') || '—';
+    document.getElementById('sum-addr').textContent = v('f_addr') || '—';
+    document.getElementById('sum-pay').textContent = payMethod === 'mpesa' ? 'M-Pesa' : 'Bank Account';
+    document.getElementById('sum-payphone').textContent = v('f_payphone') || '—';
+    const docType = document.querySelector('.doc-type.sel')?.textContent || 'National ID';
+    document.getElementById('sum-doctype').textContent = docType;
+    document.getElementById('sum-front').textContent = fakeFiles.front || 'Not uploaded';
+    document.getElementById('sum-back').textContent = fakeFiles.back || 'Not uploaded';
+  }
+</script>
+</body>
+</html>

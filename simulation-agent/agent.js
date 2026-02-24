@@ -113,7 +113,7 @@ function calculateSuccessProbability(merchant) {
 // Main agent simulation logic
 async function runAgentSimulation() {
   const merchant = getMerchantProfile();
-  const portalUrl = merchant.portalUrl || 'https://m-pesaforbusiness.co.ke/apply';
+  const portalUrl = merchant.portalUrl || 'http://host.docker.internal:3000/mock-portal/index.html';
   
   console.log(`\n🤖 Agent started for merchant: ${merchant.merchantId}`);
   console.log(`📱 Device: ${merchant.deviceType} | 📡 Network: ${merchant.networkProfile}`);

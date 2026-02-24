@@ -42,7 +42,7 @@ This agent uses Playwright to interact with the onboarding portal, simulating re
   "incomeLevel": "medium",
   "patienceScore": 0.7,
   "retryThreshold": 3,
-  "portalUrl": "https://m-pesaforbusiness.co.ke/apply",
+  "portalUrl": "http://host.docker.internal:3000/mock-portal/index.html",
   "scenarioId": "scenario-001"
 }
 ```
@@ -64,7 +64,7 @@ npm install
 npm run install:playwright
 
 # Set environment variables and run
-export MERCHANT_PROFILE='{"merchantId":"M001","digitalLiteracy":"intermediate","networkProfile":"4G_GOOD","deviceType":"android_mid","incomeLevel":"medium","patienceScore":0.7,"retryThreshold":3,"portalUrl":"https://m-pesaforbusiness.co.ke/apply"}'
+export MERCHANT_PROFILE='{"merchantId":"M001","digitalLiteracy":"intermediate","networkProfile":"4G_GOOD","deviceType":"android_mid","incomeLevel":"medium","patienceScore":0.7,"retryThreshold":3,"portalUrl":"file:///C:/Users/brian/Downloads/lipa-na-mpesa-portal.html"}'
 export INSIGHT_SERVICE_URL="http://localhost:3000"
 
 npm start

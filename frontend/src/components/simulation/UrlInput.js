@@ -10,10 +10,10 @@ function UrlInput({ portalUrl, onUrlChange }) {
         type="text"
         value={portalUrl}
         onChange={(e) => onUrlChange(e.target.value)}
-        placeholder="https://m-pesaforbusiness.co.ke/apply"
+        placeholder="http://localhost:3000/mock-portal/index.html"
         className="portal-input"
       />
-      <p className="input-hint">URL where agents will attempt onboarding</p>
+      <p className="input-hint">Local file path or URL where agents will attempt onboarding</p>
     </div>
   );
 }

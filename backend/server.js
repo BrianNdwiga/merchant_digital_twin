@@ -25,6 +25,10 @@ const PORT = process.env.PORT || 3000;
 app.use(cors());
 app.use(express.json());
 
+// Serve mock portal HTML files
+const mockPortalDir = path.join(__dirname, '..', 'mock-portal');
+app.use('/mock-portal', express.static(mockPortalDir));
+
 // Configure multer for CSV uploads
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
@@ -483,7 +487,7 @@ app.post('/simulate/channel', async (req, res) => {
     const selectedMerchants = cachedMerchants.slice(0, count);
     
     const config = {
-      portalUrl: portalUrl || 'https://m-pesaforbusiness.co.ke/apply',
+      portalUrl: portalUrl || 'http://localhost:3000/mock-portal/index.html',
       simulationSpeed: simulationSpeed || 'normal',
       networkVariability: networkVariability !== false,
       scenarioId: `portal-sim-${Date.now()}`

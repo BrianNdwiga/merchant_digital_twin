@@ -146,10 +146,10 @@ function Dashboard() {
         />
         <MetricCard
           label="Experience Score"
-          value={summary.experienceScore.toFixed(2)}
+          value={summary.experienceScore != null ? summary.experienceScore.toFixed(2) : 'N/A'}
           icon="⭐"
-          color={getScoreColor(summary.experienceScore)}
-          subtitle={getScoreLabel(summary.experienceScore)}
+          color={getScoreColor(summary.experienceScore || 0)}
+          subtitle={getScoreLabel(summary.experienceScore || 0)}
         />
       </div>
 
@@ -260,16 +260,16 @@ function BreakdownCard({ title, data, icon }) {
           <span className="stat-value" style={{ 
             color: data.successRate >= 0.8 ? '#4ade80' : data.successRate >= 0.6 ? '#fbbf24' : '#ef4444'
           }}>
-            {(data.successRate * 100).toFixed(1)}%
+            {data.successRate != null ? (data.successRate * 100).toFixed(1) : '0'}%
           </span>
         </div>
         <div className="stat-row">
           <span className="stat-label">Avg Attempts:</span>
-          <span className="stat-value">{data.avgAttempts.toFixed(1)}</span>
+          <span className="stat-value">{data.avgAttempts != null ? data.avgAttempts.toFixed(1) : 'N/A'}</span>
         </div>
         <div className="stat-row">
           <span className="stat-label">Exp Score:</span>
-          <span className="stat-value">{data.avgExperienceScore.toFixed(2)}</span>
+          <span className="stat-value">{data.avgExperienceScore != null ? data.avgExperienceScore.toFixed(2) : 'N/A'}</span>
         </div>
       </div>
     </div>
@@ -296,7 +296,7 @@ function ComparisonCard({ scenario, label }) {
         </div>
         <div className="stat-row">
           <span>Experience:</span>
-          <span>{scenario.experienceScore.toFixed(2)}</span>
+          <span>{scenario.experienceScore != null ? scenario.experienceScore.toFixed(2) : 'N/A'}</span>
         </div>
       </div>
     </div>

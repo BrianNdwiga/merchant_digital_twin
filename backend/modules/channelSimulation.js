@@ -24,10 +24,16 @@ function getAvailableChannels() {
 async function spawnChannelAgent(merchant, channelConfig, progressCallback) {
   const containerName = `agent_${merchant.merchantId}_${Date.now()}`;
   
+  // Convert localhost URLs to host.docker.internal for Docker container access
+  let portalUrl = channelConfig.portalUrl || 'http://localhost:3000/mock-portal/index.html';
+  if (portalUrl.includes('localhost')) {
+    portalUrl = portalUrl.replace('localhost', 'host.docker.internal');
+  }
+  
   // Merge merchant profile with portal URL from config
   const agentProfile = {
     ...merchant,
-    portalUrl: channelConfig.portalUrl || 'https://m-pesaforbusiness.co.ke/apply',
+    portalUrl: portalUrl,
     scenarioId: channelConfig.scenarioId || 'channel-simulation'
   };
   

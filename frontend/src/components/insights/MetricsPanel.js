@@ -36,10 +36,10 @@ function MetricsPanel({ summary }) {
       </div>
 
       <div className="metric-card">
-        <div className="metric-icon" style={{ color: getScoreColor(summary.experienceScore) }}>⭐</div>
+        <div className="metric-icon" style={{ color: getScoreColor(summary.experienceScore || 0) }}>⭐</div>
         <div className="metric-content">
           <div className="metric-label">Experience Score</div>
-          <div className="metric-value">{summary.experienceScore.toFixed(2)}</div>
+          <div className="metric-value">{summary.experienceScore != null ? summary.experienceScore.toFixed(2) : 'N/A'}</div>
         </div>
       </div>
     </div>

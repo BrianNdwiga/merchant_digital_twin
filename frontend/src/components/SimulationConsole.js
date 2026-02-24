@@ -11,7 +11,7 @@ function SimulationConsole({ onNavigate }) {
     network: null,
     bio: null
   });
-  const [portalUrl, setPortalUrl] = useState('https://m-pesaforbusiness.co.ke/apply');
+  const [portalUrl, setPortalUrl] = useState('http://localhost:3000/mock-portal/index.html');
   const [merchantCount, setMerchantCount] = useState(5);
   const [simulationSpeed, setSimulationSpeed] = useState('normal');
   const [networkVariability, setNetworkVariability] = useState(true);

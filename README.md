@@ -239,8 +239,10 @@ M003,agriculture,low,android_low,2G_EDGE,basic
 - USSD and App channels coming soon
 
 **Portal URL:**
-- Default: `https://m-pesaforbusiness.co.ke/apply`
-- Or enter custom onboarding portal URL
+- Default: `http://localhost:3000/mock-portal/index.html` (served by backend)
+- Mock portal location: `mock-portal/index.html` in project root
+- Edit the HTML file to customize portal behavior
+- Or enter custom onboarding portal URL for testing
 
 **Simulation Controls:**
 - Number of merchants: 1-100
