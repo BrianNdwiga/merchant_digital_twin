@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import './LiveInsights.css';
 import MetricsPanel from './insights/MetricsPanel';
-import LiveLogs from './insights/LiveLogs';
-import AgentStatusGrid from './insights/AgentStatusGrid';
+import SimulationTimeline from './insights/SimulationTimeline';
+import AIAssistantPanel from './insights/AIAssistantPanel';
 import AIInsights from './insights/AIInsights';
 import AIRecommendations from './insights/AIRecommendations';
 
@@ -11,11 +11,7 @@ function LiveInsights() {
   const [events, setEvents] = useState([]);
   const [insights, setInsights] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [autoScroll, setAutoScroll] = useState(true);
-  const eventsEndRef = useRef(null);
-  const eventsContainerRef = useRef(null);
   const wsRef = useRef(null);
-  const userScrolledRef = useRef(false);
 
   useEffect(() => {
     // Initial fetch
@@ -87,38 +83,6 @@ function LiveInsights() {
       wsRef.current = ws;
     } catch (error) {
       console.error('Failed to connect WebSocket:', error);
-    }
-  };
-
-  // Smart auto-scroll: only scroll if user is near bottom and auto-scroll is enabled
-  useEffect(() => {
-    if (!autoScroll || !eventsEndRef.current || !eventsContainerRef.current) {
-      return;
-    }
-
-    // Check if user is near the bottom (within 100px)
-    const container = eventsContainerRef.current;
-    const isNearBottom = container.scrollHeight - container.scrollTop - container.clientHeight < 100;
-
-    // Only auto-scroll if user hasn't manually scrolled up
-    if (isNearBottom && !userScrolledRef.current) {
-      eventsEndRef.current.scrollIntoView({ behavior: 'smooth' });
-    }
-  }, [events, autoScroll]);
-
-  // Detect when user manually scrolls
-  const handleScroll = () => {
-    if (!eventsContainerRef.current) return;
-
-    const container = eventsContainerRef.current;
-    const isAtBottom = container.scrollHeight - container.scrollTop - container.clientHeight < 10;
-
-    // If user scrolled to bottom, re-enable auto-scroll
-    if (isAtBottom) {
-      userScrolledRef.current = false;
-    } else {
-      // User scrolled up, disable auto-scroll temporarily
-      userScrolledRef.current = true;
     }
   };
 
@@ -258,27 +222,25 @@ function LiveInsights() {
   return (
     <div className="live-insights">
       <div className="insights-header">
-        <h2>Live Insights</h2>
-        <p>Real-time simulation metrics and AI-powered analysis</p>
+        <div className="header-content">
+          <h2>Live Insights</h2>
+          <p>Real-time simulation monitoring and AI-powered analysis</p>
+        </div>
+        <div className="simulation-status running">
+          <span className="status-dot"></span>
+          <span className="status-text">SIMULATION RUNNING</span>
+        </div>
       </div>
 
       <MetricsPanel summary={summary} />
       
-      <div className="insights-grid">
-        <div className="insights-left-col">
+      <div className="insights-layout">
+        <div className="insights-main">
+          <SimulationTimeline events={events} />
           <AIInsights insights={insights} />
-          <AIRecommendations recommendations={insights?.aiRecommendations || []} />
         </div>
-        <div className="insights-right-col">
-          <AgentStatusGrid summary={summary} />
-          <LiveLogs 
-            events={events} 
-            eventsEndRef={eventsEndRef}
-            eventsContainerRef={eventsContainerRef}
-            autoScroll={autoScroll}
-            setAutoScroll={setAutoScroll}
-            onScroll={handleScroll}
-          />
+        <div className="insights-sidebar">
+          <AIAssistantPanel insights={insights} summary={summary} />
         </div>
       </div>
     </div>

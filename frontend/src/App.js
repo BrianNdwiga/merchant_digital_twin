@@ -4,7 +4,6 @@ import Dashboard from './components/Dashboard';
 import SimulationConsole from './components/SimulationConsole';
 import LiveInsights from './components/LiveInsights';
 import ScenarioTesting from './components/ScenarioTesting';
-import Settings from './components/Settings';
 
 function App() {
   const [activeTab, setActiveTab] = useState('dashboard');
@@ -28,10 +27,9 @@ function App() {
 
   const navigation = [
     { id: 'dashboard', label: 'Dashboard', icon: '📊' },
-    { id: 'console', label: 'Simulation Console', icon: '🎯' },
+    { id: 'console', label: 'Run Simulation', icon: '▶️' },
     { id: 'insights', label: 'Live Insights', icon: '📈' },
-    { id: 'testing', label: 'Scenario Testing', icon: '🧪' },
-    { id: 'settings', label: 'Settings', icon: '⚙️' }
+    { id: 'testing', label: 'Scenarios', icon: '🧪' }
   ];
 
   return (
@@ -63,11 +61,10 @@ function App() {
       </nav>
 
       <main className="app-main">
-        {activeTab === 'dashboard' && <Dashboard />}
+        {activeTab === 'dashboard' && <Dashboard onNavigate={setActiveTab} />}
         {activeTab === 'console' && <SimulationConsole onNavigate={setActiveTab} />}
         {activeTab === 'insights' && <LiveInsights />}
         {activeTab === 'testing' && <ScenarioTesting />}
-        {activeTab === 'settings' && <Settings />}
       </main>
     </div>
   );

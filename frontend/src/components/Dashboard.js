@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import './Dashboard.css';
 
-function Dashboard() {
+function Dashboard({ onNavigate }) {
   const [summary, setSummary] = useState(null);
   const [scenarios, setScenarios] = useState([]);
   const [byNetwork, setByNetwork] = useState(null);
@@ -93,11 +93,53 @@ function Dashboard() {
   if (!summary || (summary.totalMerchants === 0 && !scenarios.length)) {
     return (
       <div className="dashboard-empty">
-        <div className="empty-icon">📊</div>
-        <h3>No Simulation Data</h3>
-        <p>Run a simulation to see insights and metrics</p>
-        <div className="empty-hint">
-          <p>Start a simulation from the Simulation Console</p>
+        <div className="empty-icon">🎯</div>
+        <h3>Welcome to Merchant Twin Simulation</h3>
+        <p className="welcome-subtitle">AI-powered decision intelligence for onboarding optimization</p>
+        
+        <div className="flow-diagram">
+          <div className="flow-step">
+            <div className="flow-icon">📊</div>
+            <div className="flow-label">CSV Upload</div>
+          </div>
+          <div className="flow-arrow">→</div>
+          <div className="flow-step">
+            <div className="flow-icon">🤖</div>
+            <div className="flow-label">AI Merchants</div>
+          </div>
+          <div className="flow-arrow">→</div>
+          <div className="flow-step">
+            <div className="flow-icon">🌐</div>
+            <div className="flow-label">Onboarding Portal</div>
+          </div>
+          <div className="flow-arrow">→</div>
+          <div className="flow-step">
+            <div className="flow-icon">💡</div>
+            <div className="flow-label">Insights</div>
+          </div>
+        </div>
+
+        <button className="cta-button" onClick={() => onNavigate('console')}>
+          <span className="cta-icon">▶️</span>
+          Start Simulation
+        </button>
+
+        <div className="info-cards">
+          <div className="info-card">
+            <div className="info-icon">🎭</div>
+            <h4>Synthetic Merchants</h4>
+            <p>AI agents simulate real merchant personas with varying digital literacy and network conditions</p>
+          </div>
+          <div className="info-card">
+            <div className="info-icon">📈</div>
+            <h4>Live Monitoring</h4>
+            <p>Watch merchants navigate your onboarding flow in real-time and detect friction points</p>
+          </div>
+          <div className="info-card">
+            <div className="info-icon">🔮</div>
+            <h4>AI Recommendations</h4>
+            <p>Get actionable insights to improve completion rates and reduce drop-offs</p>
+          </div>
         </div>
       </div>
     );
@@ -121,37 +163,42 @@ function Dashboard() {
     <div className="dashboard fade-in">
       <div className="dashboard-header">
         <h2>Simulation Dashboard</h2>
-        <p>Real-time insights from scenario experiments</p>
+        <p>Real-time insights from merchant onboarding simulations</p>
       </div>
 
       {/* Key Metrics */}
       <div className="metrics-grid">
         <MetricCard
-          label="Total Merchants"
+          label="Merchants Loaded"
           value={summary.totalMerchants}
           icon="🏪"
           color="#60a5fa"
         />
         <MetricCard
-          label="Success Rate"
+          label="Active Agents Running"
+          value={summary.totalMerchants}
+          icon="🤖"
+          color="#a78bfa"
+          subtitle="Simulating journeys"
+        />
+        <MetricCard
+          label="Simulation Success Rate"
           value={summary.successRatePercent}
           icon="✅"
           color={summary.successRate >= 0.8 ? '#4ade80' : '#fbbf24'}
         />
         <MetricCard
-          label="Avg Completion Time"
-          value={`${summary.averageCompletionTimeSec}s`}
-          icon="⏱️"
-          color="#a78bfa"
-        />
-        <MetricCard
-          label="Experience Score"
-          value={summary.experienceScore != null ? summary.experienceScore.toFixed(2) : 'N/A'}
-          icon="⭐"
-          color={getScoreColor(summary.experienceScore || 0)}
-          subtitle={getScoreLabel(summary.experienceScore || 0)}
+          label="Drop-off Rate"
+          value={`${((1 - summary.successRate) * 100).toFixed(1)}%`}
+          icon="⚠️"
+          color={summary.successRate >= 0.8 ? '#4ade80' : '#ef4444'}
         />
       </div>
+
+      <button className="cta-button secondary" onClick={() => onNavigate('console')}>
+        <span className="cta-icon">▶️</span>
+        Run New Simulation
+      </button>
 
       {/* Scenarios Overview & Comparison */}
       {scenarios.length > 0 && (

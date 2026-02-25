@@ -40,3 +40,20 @@
   font-weight: 700;
   color: #f1f5f9;
 }
+
+.metric-subtitle {
+  font-size: 0.75rem;
+  color: #64748b;
+  margin-top: 0.25rem;
+  font-weight: 500;
+}
+
+.metric-card {
+  background: #161b22;
+  border: 1px solid #1e2730;
+}
+
+.metric-card:hover {
+  border-color: #334155;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}

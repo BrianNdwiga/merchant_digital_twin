@@ -1,9 +1,6 @@
 import React, { useState } from 'react';
 import './SimulationConsole.css';
-import CSVUploader from './simulation/CSVUploader';
-import UrlInput from './simulation/UrlInput';
-import SimulationControls from './simulation/SimulationControls';
-import RunSimulationButton from './simulation/RunSimulationButton';
+import GuidedStepper from './simulation/GuidedStepper';
 
 function SimulationConsole({ onNavigate }) {
   const [uploadedFiles, setUploadedFiles] = useState({
@@ -131,44 +128,17 @@ function SimulationConsole({ onNavigate }) {
 
   return (
     <div className="simulation-console">
-      <div className="console-header">
-        <h2>Simulation Console</h2>
-        <p>Configure and execute merchant onboarding simulations</p>
-      </div>
-
-      <div className="console-grid">
-        <CSVUploader 
-          uploadedFiles={uploadedFiles}
-          onFileUpload={handleFileUpload}
-          preFilledFiles={preFilledFiles}
-        />
-
-        <UrlInput
-          portalUrl={portalUrl}
-          onUrlChange={setPortalUrl}
-        />
-
-        <SimulationControls
-          merchantCount={merchantCount}
-          simulationSpeed={simulationSpeed}
-          networkVariability={networkVariability}
-          onMerchantCountChange={setMerchantCount}
-          onSpeedChange={setSimulationSpeed}
-          onVariabilityChange={setNetworkVariability}
-        />
-
-        <RunSimulationButton
-          isRunning={isRunning}
-          disabled={!uploadedFiles.merchants}
-          onClick={handleRunSimulation}
-        />
-
-        {statusMessage && (
-          <div className="status-message">
-            {statusMessage}
-          </div>
-        )}
-      </div>
+      <GuidedStepper
+        uploadedFiles={uploadedFiles}
+        onFileUpload={handleFileUpload}
+        portalUrl={portalUrl}
+        onUrlChange={setPortalUrl}
+        merchantCount={merchantCount}
+        onMerchantCountChange={setMerchantCount}
+        onRunSimulation={handleRunSimulation}
+        isRunning={isRunning}
+        statusMessage={statusMessage}
+      />
     </div>
   );
 }

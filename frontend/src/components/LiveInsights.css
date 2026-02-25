@@ -1,47 +1,102 @@
 .live-insights {
-  padding: 2rem;
-  background: #0f172a;
-  min-height: 100vh;
+  max-width: 1600px;
+  margin: 0 auto;
 }
 
 .insights-header {
   margin-bottom: 2rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 1rem;
 }
 
-.insights-header h2 {
-  font-size: 1.8rem;
+.header-content h2 {
+  font-size: 1.875rem;
+  font-weight: 800;
+  color: #e2e8f0;
   margin-bottom: 0.5rem;
-  color: #f1f5f9;
 }
 
-.insights-header p {
+.header-content p {
+  font-size: 0.875rem;
+  color: #64748b;
+}
+
+.simulation-status {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem 1.5rem;
+  background: rgba(74, 222, 128, 0.1);
+  border: 1px solid rgba(74, 222, 128, 0.3);
+  border-radius: 8px;
+  font-weight: 700;
+  font-size: 0.875rem;
+  letter-spacing: 0.05em;
+}
+
+.simulation-status.running {
+  color: #4ade80;
+}
+
+.simulation-status.stopped {
+  background: rgba(148, 163, 184, 0.1);
+  border-color: rgba(148, 163, 184, 0.3);
   color: #94a3b8;
-  font-size: 0.95rem;
 }
 
-.insights-grid {
+.status-dot {
+  width: 10px;
+  height: 10px;
+  background: #4ade80;
+  border-radius: 50%;
+  animation: pulse 2s infinite;
+}
+
+.simulation-status.stopped .status-dot {
+  background: #94a3b8;
+  animation: none;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.5;
+    transform: scale(1.1);
+  }
+}
+
+.insights-layout {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: 1fr 400px;
   gap: 1.5rem;
   margin-top: 1.5rem;
 }
 
-.insights-left-col,
-.insights-right-col {
+.insights-main {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.insights-sidebar {
   display: flex;
   flex-direction: column;
   gap: 1.5rem;
 }
 
 @media (max-width: 1200px) {
-  .insights-grid {
+  .insights-layout {
     grid-template-columns: 1fr;
   }
-}
-
-@media (max-width: 768px) {
-  .insights-grid {
-    grid-template-columns: 1fr;
+  
+  .insights-sidebar {
+    order: -1;
   }
 }
 
