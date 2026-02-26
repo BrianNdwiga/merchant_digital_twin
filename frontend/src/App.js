@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import './App.css';
 import Dashboard from './components/Dashboard';
 import SimulationConsole from './components/SimulationConsole';
@@ -8,6 +8,7 @@ import ScenarioTesting from './components/ScenarioTesting';
 function App() {
   const [activeTab, setActiveTab] = useState('dashboard');
   const [backendStatus, setBackendStatus] = useState('checking');
+  const [prevTab, setPrevTab] = useState(null);
 
   useEffect(() => {
     const checkBackend = async () => {
@@ -19,17 +20,21 @@ function App() {
         setBackendStatus('offline');
       }
     };
-
     checkBackend();
     const interval = setInterval(checkBackend, 30000);
     return () => clearInterval(interval);
   }, []);
 
+  const handleNavigate = (tab) => {
+    setPrevTab(activeTab);
+    setActiveTab(tab);
+  };
+
   const navigation = [
-    { id: 'dashboard', label: 'Dashboard', icon: '📊' },
-    { id: 'console', label: 'Run Simulation', icon: '▶️' },
-    { id: 'insights', label: 'Live Insights', icon: '📈' },
-    { id: 'testing', label: 'Scenarios', icon: '🧪' }
+    { id: 'dashboard', label: 'Dashboard', icon: '🪴' },
+    { id: 'console',   label: 'Run Simulation', icon: '🚀' },
+    { id: 'insights',  label: 'Live Insights', icon: '🔭' },
+    { id: 'testing',   label: 'Scenarios', icon: '🧩' },
   ];
 
   return (
@@ -48,47 +53,52 @@ function App() {
       </header>
 
       <nav className="app-nav">
-        {navigation.map(item => (
-          <button
-            key={item.id}
-            className={`nav-item ${activeTab === item.id ? 'active' : ''}`}
-            onClick={() => setActiveTab(item.id)}
-          >
-            <span className="nav-icon">{item.icon}</span>
-            <span className="nav-label">{item.label}</span>
-          </button>
-        ))}
+        <div className="nav-track">
+          {navigation.map((item) => (
+            <button
+              key={item.id}
+              className={`nav-item ${activeTab === item.id ? 'active' : ''}`}
+              onClick={() => handleNavigate(item.id)}
+            >
+              <span className="nav-icon">{item.icon}</span>
+              <span className="nav-label">{item.label}</span>
+              {activeTab === item.id && <span className="nav-active-bar" />}
+            </button>
+          ))}
+        </div>
       </nav>
 
       <main className="app-main">
-        {activeTab === 'dashboard' && <Dashboard onNavigate={setActiveTab} />}
-        {activeTab === 'console' && <SimulationConsole onNavigate={setActiveTab} />}
-        {activeTab === 'insights' && <LiveInsights />}
-        {activeTab === 'testing' && <ScenarioTesting />}
+        <div className="view-wrapper fade-in" key={activeTab}>
+          {activeTab === 'dashboard' && <Dashboard onNavigate={handleNavigate} />}
+          {activeTab === 'console'   && <SimulationConsole onNavigate={handleNavigate} />}
+          {activeTab === 'insights'  && <LiveInsights />}
+          {activeTab === 'testing'   && <ScenarioTesting />}
+        </div>
       </main>
     </div>
   );
 }
 
 function StatusIndicator({ status }) {
-  const colors = {
-    online: '#4ade80',
-    offline: '#ef4444',
-    checking: '#fbbf24'
+  const map = {
+    online:   { color: '#00a651', label: 'Backend Online' },
+    offline:  { color: '#ef4444', label: 'Backend Offline' },
+    checking: { color: '#f59e0b', label: 'Checking…' },
   };
+  const { color, label } = map[status] ?? map.checking;
 
   return (
     <div className="status-indicator">
-      <div 
-        className="status-dot" 
-        style={{ 
-          backgroundColor: colors[status],
-          animation: status === 'checking' ? 'pulse 1.5s infinite' : 'none'
+      <span
+        className="status-dot"
+        style={{
+          backgroundColor: color,
+          //boxShadow: `0 0 0 0 ${color}`,
+          animation: status === 'checking' ? 'dotPulse 1.4s ease infinite' : 'none',
         }}
       />
-      <span className="status-label">
-        {status === 'online' ? 'Backend Online' : status === 'offline' ? 'Backend Offline' : 'Checking...'}
-      </span>
+      <span className="status-label">{label}</span>
     </div>
   );
 }

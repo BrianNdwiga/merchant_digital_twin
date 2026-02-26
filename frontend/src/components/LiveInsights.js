@@ -6,240 +6,235 @@ import AIAssistantPanel from './insights/AIAssistantPanel';
 import AIInsights from './insights/AIInsights';
 import AIRecommendations from './insights/AIRecommendations';
 
-function LiveInsights() {
-  const [summary, setSummary] = useState(null);
-  const [events, setEvents] = useState([]);
+// ── Event message formatter (all original logic preserved) ───────────────────
+function formatEventMessage(event) {
+  const merchantId = event.merchantId || 'Unknown';
+  const eventType  = event.event || event.eventType || 'event';
+  const network    = event.networkProfile  ? ` [${event.networkProfile}]`  : '';
+  const literacy   = event.digitalLiteracy ? ` [${event.digitalLiteracy}]` : '';
+  const device     = event.deviceType      ? ` [${event.deviceType}]`      : '';
+  const latency    = event.latency         ? ` (${event.latency}ms)`       : '';
+  const step       = event.step            ? ` - ${event.step}`            : '';
+  const url        = event.url             ? ` at ${event.url}`            : '';
+
+  switch (eventType) {
+    case 'ONBOARDING_SUMMARY':
+    case 'SUMMARY': {
+      const outcome  = event.summary?.success ? '✅ SUCCESS' : '❌ FAILED';
+      const time     = event.summary?.completionTimeMs ? ` in ${event.summary.completionTimeMs}ms` : '';
+      const attempts = event.summary?.totalAttempts    ? ` (${event.summary.totalAttempts} attempts)` : '';
+      return `${outcome} ${merchantId}${time}${attempts}${network}${literacy}`;
+    }
+    case 'PAGE_LOAD':              return `🌐 ${merchantId} loaded portal${url}${latency}${network}`;
+    case 'PAGE_LOAD_FAILED':       return `❌ ${merchantId} failed to load portal${url}: ${event.error || 'unknown'}${network}`;
+    case 'FIELD_FILLED':           return `✏️ ${merchantId} filled field: ${event.field || 'unknown'}${latency}${literacy}`;
+    case 'VALIDATION_ERROR':       return `⚠️ ${merchantId} validation error on ${event.field || 'field'} - retrying${literacy}`;
+    case 'DOCUMENT_UPLOAD_CONFUSION': return `😕 ${merchantId} experiencing confusion with document upload${literacy}`;
+    case 'ONBOARDING_COMPLETE':    return `✅ ${merchantId} completed onboarding${latency}${device}${network}`;
+    case 'ONBOARDING_FAILED':      return `❌ ${merchantId} onboarding failed${step}: ${event.error || 'unknown'}${device}`;
+    case 'ATTEMPT': {
+      const result = event.result === 'success' ? '✅' : '🔄';
+      return `${result} ${merchantId} attempt ${event.attempt || 1}${latency}${network}${literacy}`;
+    }
+    case 'ONBOARDING_ATTEMPT': {
+      const attemptResult = event.result === 'success' ? '✅' : '🔄';
+      return `${attemptResult} ${merchantId} onboarding attempt ${event.attempt || 1}${latency}`;
+    }
+    case 'AGENT_ERROR':     return `💥 ${merchantId} agent error: ${event.error || 'unknown'}`;
+    case 'SIMULATION_START': return `🚀 ${merchantId} started simulation${device}${network}${literacy}`;
+    case 'STEP_COMPLETED':  return `✅ ${merchantId} completed${step}${latency}`;
+    case 'RETRY_ATTEMPT':   return `🔄 ${merchantId} retrying (attempt ${event.retryCount || event.attempt || 1})${network}`;
+    case 'NETWORK_DELAY':   return `📡 ${merchantId} network delay${latency}${network}`;
+    case 'TIMEOUT':         return `⏱️ ${merchantId} timeout${step}${network}`;
+    default: {
+      const context = [network, literacy, device, latency, step].filter(Boolean).join(' ');
+      return `📝 ${merchantId}: ${eventType}${context ? ' ' + context : ''}`;
+    }
+  }
+}
+
+// ── Classify event type for styling ─────────────────────────────────────────
+function getEventClass(type) {
+  if (!type) return 'ev-neutral';
+  const t = type.toUpperCase();
+  if (t.includes('COMPLETE') || t.includes('SUCCESS')) return 'ev-success';
+  if (t.includes('FAIL') || t.includes('ERROR'))       return 'ev-error';
+  if (t.includes('RETRY') || t.includes('VALIDATION')) return 'ev-warn';
+  if (t.includes('START') || t.includes('LOAD'))       return 'ev-info';
+  return 'ev-neutral';
+}
+
+// ── Main Component ────────────────────────────────────────────────────────────
+function LiveInsights({ showToast }) {
+  const [summary,  setSummary]  = useState(null);
+  const [events,   setEvents]   = useState([]);
   const [insights, setInsights] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [loading,  setLoading]  = useState(true);
+  const [wsStatus, setWsStatus] = useState('connecting'); // connecting | live | polling
+  const [eventCount, setEventCount] = useState(0);
   const wsRef = useRef(null);
+  const timelineRef = useRef(null);
 
   useEffect(() => {
-    // Initial fetch
     fetchInsights();
     fetchEvents();
-    
-    // Setup WebSocket connection
     connectWebSocket();
-    
-    // Fallback polling (in case WebSocket fails)
+
     const insightsInterval = setInterval(fetchInsights, 5000);
-    const eventsInterval = setInterval(fetchEvents, 3000);
-    
+    const eventsInterval   = setInterval(fetchEvents,   3000);
+
     return () => {
       clearInterval(insightsInterval);
       clearInterval(eventsInterval);
-      if (wsRef.current) {
-        wsRef.current.close();
-      }
+      wsRef.current?.close();
     };
   }, []);
 
   const connectWebSocket = () => {
     try {
       const ws = new WebSocket('ws://localhost:3000');
-      
+
       ws.onopen = () => {
-        console.log('🔌 WebSocket connected');
+        setWsStatus('live');
+        showToast?.('WebSocket connected', 'success');
       };
 
       ws.onmessage = (event) => {
         try {
           const message = JSON.parse(event.data);
-          
           if (message.type === 'insights') {
             setInsights(message.data);
-            // Also update summary from operational metrics
             if (message.data.operational) {
-              setSummary(prev => ({
-                ...prev,
-                ...message.data.operational
-              }));
+              setSummary(prev => ({ ...prev, ...message.data.operational }));
             }
           } else if (message.type === 'event') {
-            // Add new event to the list
-            const formattedEvent = {
-              timestamp: new Date(message.data.timestamp).toLocaleTimeString(),
-              message: formatEventMessage(message.data),
-              type: message.data.event || message.data.eventType,
-              merchantId: message.data.merchantId
+            const formatted = {
+              timestamp:  new Date(message.data.timestamp).toLocaleTimeString(),
+              message:    formatEventMessage(message.data),
+              type:       message.data.event || message.data.eventType,
+              merchantId: message.data.merchantId,
+              id:         Date.now() + Math.random(),
             };
-            setEvents(prev => [formattedEvent, ...prev].slice(0, 50));
+            setEvents(prev => [formatted, ...prev].slice(0, 50));
+            setEventCount(c => c + 1);
           }
-        } catch (error) {
-          console.error('Error parsing WebSocket message:', error);
-        }
+        } catch { /* ignore parse errors */ }
       };
 
-      ws.onerror = (error) => {
-        console.error('WebSocket error:', error);
-      };
-
-      ws.onclose = () => {
-        console.log('🔌 WebSocket disconnected');
-        // Attempt to reconnect after 5 seconds
+      ws.onerror  = () => setWsStatus('polling');
+      ws.onclose  = () => {
+        setWsStatus('polling');
         setTimeout(connectWebSocket, 5000);
       };
 
       wsRef.current = ws;
-    } catch (error) {
-      console.error('Failed to connect WebSocket:', error);
-    }
+    } catch { setWsStatus('polling'); }
   };
 
   const fetchInsights = async () => {
     try {
       const [summaryRes, liveRes] = await Promise.all([
         fetch('http://localhost:3000/insights/summary'),
-        fetch('http://localhost:3000/insights/live')
+        fetch('http://localhost:3000/insights/live'),
       ]);
-      
-      const summaryData = await summaryRes.json();
-      const liveData = await liveRes.json();
-      
-      setSummary(summaryData);
-      setInsights(liveData);
+      setSummary(await summaryRes.json());
+      setInsights(await liveRes.json());
       setLoading(false);
-    } catch (error) {
-      console.error('Failed to fetch insights:', error);
-      setLoading(false);
-    }
+    } catch { setLoading(false); }
   };
 
   const fetchEvents = async () => {
     try {
-      const res = await fetch('http://localhost:3000/events/recent?limit=50');
+      const res  = await fetch('http://localhost:3000/events/recent?limit=50');
       const data = await res.json();
-      
-      if (data.events && Array.isArray(data.events)) {
-        // Format events for display
-        const formattedEvents = data.events.map(event => ({
-          timestamp: new Date(event.timestamp).toLocaleTimeString(),
-          message: formatEventMessage(event),
-          type: event.event || event.eventType,
-          merchantId: event.merchantId
-        }));
-        
-        setEvents(formattedEvents);
+      if (data.events?.length) {
+        setEvents(data.events.map(ev => ({
+          timestamp:  new Date(ev.timestamp).toLocaleTimeString(),
+          message:    formatEventMessage(ev),
+          type:       ev.event || ev.eventType,
+          merchantId: ev.merchantId,
+          id:         ev.id || Math.random(),
+        })));
       }
-    } catch (error) {
-      console.error('Failed to fetch events:', error);
-    }
+    } catch { /* silent */ }
   };
 
-  const formatEventMessage = (event) => {
-    const merchantId = event.merchantId || 'Unknown';
-    const eventType = event.event || event.eventType || 'event';
-    
-    // Extract additional context
-    const network = event.networkProfile ? ` [${event.networkProfile}]` : '';
-    const literacy = event.digitalLiteracy ? ` [${event.digitalLiteracy}]` : '';
-    const device = event.deviceType ? ` [${event.deviceType}]` : '';
-    const latency = event.latency ? ` (${event.latency}ms)` : '';
-    const step = event.step ? ` - ${event.step}` : '';
-    const url = event.url ? ` at ${event.url}` : '';
-    
-    switch (eventType) {
-      case 'ONBOARDING_SUMMARY':
-      case 'SUMMARY':
-        const outcome = event.summary?.success ? '✅ SUCCESS' : '❌ FAILED';
-        const time = event.summary?.completionTimeMs ? ` in ${event.summary.completionTimeMs}ms` : '';
-        const attempts = event.summary?.totalAttempts ? ` (${event.summary.totalAttempts} attempts)` : '';
-        return `${outcome} ${merchantId}${time}${attempts}${network}${literacy}`;
-        
-      case 'PAGE_LOAD':
-        return `🌐 ${merchantId} loaded portal${url}${latency}${network}`;
-        
-      case 'PAGE_LOAD_FAILED':
-        return `❌ ${merchantId} failed to load portal${url}: ${event.error || 'unknown'}${network}`;
-        
-      case 'FIELD_FILLED':
-        return `✏️ ${merchantId} filled field: ${event.field || 'unknown'}${latency}${literacy}`;
-        
-      case 'VALIDATION_ERROR':
-        return `⚠️ ${merchantId} validation error on ${event.field || 'field'} - retrying${literacy}`;
-        
-      case 'DOCUMENT_UPLOAD_CONFUSION':
-        return `😕 ${merchantId} experiencing confusion with document upload${literacy}`;
-        
-      case 'ONBOARDING_COMPLETE':
-        return `✅ ${merchantId} completed onboarding${latency}${device}${network}`;
-        
-      case 'ONBOARDING_FAILED':
-        return `❌ ${merchantId} onboarding failed${step}: ${event.error || 'unknown'}${device}`;
-        
-      case 'ATTEMPT':
-        const result = event.result === 'success' ? '✅' : '🔄';
-        return `${result} ${merchantId} attempt ${event.attempt || 1}${latency}${network}${literacy}`;
-        
-      case 'ONBOARDING_ATTEMPT':
-        const attemptResult = event.result === 'success' ? '✅' : '🔄';
-        return `${attemptResult} ${merchantId} onboarding attempt ${event.attempt || 1}${latency}`;
-        
-      case 'AGENT_ERROR':
-        return `💥 ${merchantId} agent error: ${event.error || 'unknown'}`;
-        
-      case 'SIMULATION_START':
-        return `🚀 ${merchantId} started simulation${device}${network}${literacy}`;
-        
-      case 'STEP_COMPLETED':
-        return `✅ ${merchantId} completed${step}${latency}`;
-        
-      case 'RETRY_ATTEMPT':
-        return `🔄 ${merchantId} retrying (attempt ${event.retryCount || event.attempt || 1})${network}`;
-        
-      case 'NETWORK_DELAY':
-        return `📡 ${merchantId} network delay${latency}${network}`;
-        
-      case 'TIMEOUT':
-        return `⏱️ ${merchantId} timeout${step}${network}`;
-        
-      default:
-        // Generic format with all available context
-        const context = [network, literacy, device, latency, step].filter(Boolean).join(' ');
-        return `📝 ${merchantId}: ${eventType}${context ? ' ' + context : ''}`;
-    }
-  };
-
-  if (loading) {
-    return (
-      <div className="insights-loading">
-        <div className="spinner"></div>
-        <p>Loading insights...</p>
+  // ── Loading ──────────────────────────────────────────────────────────────
+  if (loading) return (
+    <div className="li-loading">
+      <div className="li-loading-ring">
+        <div className="li-loading-ring-inner" />
       </div>
-    );
-  }
+      <p className="li-loading-text">Loading insights<span className="li-ellipsis"><span>.</span><span>.</span><span>.</span></span></p>
+    </div>
+  );
 
-  if (!summary || summary.totalMerchants === 0) {
-    return (
-      <div className="insights-empty">
-        <div className="empty-icon">📊</div>
-        <h3>No Simulation Data</h3>
-        <p>Run a simulation to see live insights</p>
-      </div>
-    );
-  }
+  // ── Empty ─────────────────────────────────────────────────────────────────
+  if (!summary || summary.totalMerchants === 0) return (
+    <div className="li-empty">
+      <div className="li-empty-orb li-orb-1" />
+      <div className="li-empty-orb li-orb-2" />
+      <div className="li-empty-icon">🔭</div>
+      <h3 className="li-empty-title">No Simulation Data</h3>
+      <p className="li-empty-sub">Run a simulation to see live insights</p>
+    </div>
+  );
+
+  const wsColor  = wsStatus === 'live'       ? '#00a651' : wsStatus === 'polling' ? '#f59e0b' : '#7c5cfc';
+  const wsLabel  = wsStatus === 'live'       ? 'WS LIVE'  : wsStatus === 'polling' ? 'POLLING'  : 'CONNECTING';
+  const wsAnim   = wsStatus !== 'connecting' ? 'li-pulse 2s ease infinite' : 'li-spin 1s linear infinite';
 
   return (
-    <div className="live-insights">
-      <div className="insights-header">
-        <div className="header-content">
-          <h2>Live Insights</h2>
-          <p>Real-time simulation monitoring and AI-powered analysis</p>
-        </div>
-        <div className="simulation-status running">
-          <span className="status-dot"></span>
-          <span className="status-text">SIMULATION RUNNING</span>
-        </div>
-      </div>
+    <div className="li-root">
+      {/* Atmospheric background */}
+      <div className="li-bg-orb li-bg-1" />
+      <div className="li-bg-orb li-bg-2" />
 
+      {/* ── Page header ── */}
+      <header className="li-header">
+        <div className="li-header-left">
+          <div className="li-eyebrow">
+            <span className="li-eyebrow-dot" />
+            Real-time monitoring
+          </div>
+          <h2 className="li-title">Live <em>Insights</em></h2>
+          <p className="li-subtitle">Real-time simulation monitoring and AI-powered analysis</p>
+        </div>
+
+        <div className="li-header-badges">
+          {/* WS status */}
+          <div className="li-badge" style={{ '--badge-color': wsColor }}>
+            <span className="li-badge-dot" style={{ background: wsColor, animation: wsAnim }} />
+            <span className="li-badge-label">{wsLabel}</span>
+          </div>
+
+          {/* Event counter */}
+          {eventCount > 0 && (
+            <div className="li-event-counter">
+              <span className="li-event-num">{eventCount}</span>
+              <span className="li-event-label">events</span>
+            </div>
+          )}
+
+          {/* Simulation running status */}
+          <div className="li-running-badge">
+            <span className="li-running-dot" />
+            <span className="li-running-scanline" />
+            SIMULATION RUNNING
+          </div>
+        </div>
+      </header>
+
+      {/* ── Metrics ── */}
       <MetricsPanel summary={summary} />
-      
-      <div className="insights-layout">
-        <div className="insights-main">
-          <SimulationTimeline events={events} />
+
+      {/* ── Main layout ── */}
+      <div className="li-layout">
+        <div className="li-main">
+          <SimulationTimeline events={events} getEventClass={getEventClass} timelineRef={timelineRef} />
           <AIInsights insights={insights} />
         </div>
-        <div className="insights-sidebar">
+        <div className="li-sidebar">
           <AIAssistantPanel insights={insights} summary={summary} />
         </div>
       </div>

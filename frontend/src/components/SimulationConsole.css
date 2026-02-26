@@ -1,43 +1,457 @@
+/* ─── SimulationConsole.css ─────────────────────────────────────────────────── */
+
+@keyframes scFadeUp  { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes scSpin    { to { transform: rotate(360deg); } }
+@keyframes scSweep   { 0% { transform: translateX(-100%); } 100% { transform: translateX(100%); } }
+@keyframes scPulse   { 0%,100%{transform:scale(1);opacity:1} 50%{transform:scale(1.5);opacity:0} }
+@keyframes scBarGrow { from { width: 0; } to { width: 100%; } }
+@keyframes scPop     { from { opacity: 0; transform: scale(0.94); } to { opacity: 1; transform: scale(1); } }
+
 .simulation-console {
   padding: 2rem;
-  background: #0f172a;
   min-height: 100vh;
+  font-family: 'Nunito', sans-serif;
+  animation: scFadeUp 0.35s ease both;
+  background:
+    radial-gradient(ellipse 55% 35% at 5% 10%, rgba(0,166,81,0.05) 0%, transparent 65%),
+    radial-gradient(ellipse 40% 40% at 95% 90%, rgba(124,92,252,0.04) 0%, transparent 65%),
+    #080d10;
 }
 
+/* ── Header ── */
 .console-header {
-  margin-bottom: 2rem;
+  margin-bottom: 1.75rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  flex-wrap: wrap;
+  gap: 1rem;
 }
 
-.console-header h2 {
-  font-size: 1.8rem;
-  margin-bottom: 0.5rem;
-  color: #f1f5f9;
+.console-header-left h2 {
+  font-size: clamp(1.5rem, 3vw, 2rem);
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  color: #e2f0e8;
+  margin-bottom: 0.3rem;
+  line-height: 1.1;
 }
 
-.console-header p {
-  color: #94a3b8;
-  font-size: 0.95rem;
+.console-header-left h2 span { color: #00a651; }
+
+.console-header-left p {
+  font-size: 0.78rem;
+  color: #6b8c78;
+  font-family: 'DM Mono', monospace;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
 }
 
+/* ready badge */
+.console-ready-badge {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.4rem 1rem;
+  background: rgba(0,166,81,0.09);
+  border: 1px solid rgba(0,166,81,0.28);
+  border-radius: 100px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: #4ade80;
+  font-family: 'DM Mono', monospace;
+  letter-spacing: 0.07em;
+  animation: scPop 0.3s ease both;
+}
+
+.ready-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #00a651;
+  position: relative;
+  flex-shrink: 0;
+  animation: scPulse 2s ease infinite;
+}
+
+/* ── Status Bar ── */
+.console-status-bar {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.8rem 1.2rem;
+  border-radius: 12px;
+  margin-bottom: 1rem;
+  font-size: 0.82rem;
+  font-weight: 600;
+  font-family: 'DM Mono', monospace;
+  letter-spacing: 0.03em;
+  border: 1px solid;
+  animation: scPop 0.25s ease both;
+  transition: all 0.3s ease;
+}
+
+.console-status-bar.status-idle    { background: rgba(107,140,120,0.07); border-color: rgba(107,140,120,0.2);  color: #6b8c78; }
+.console-status-bar.status-success { background: rgba(0,166,81,0.08);    border-color: rgba(0,166,81,0.25);   color: #4ade80; }
+.console-status-bar.status-error   { background: rgba(239,68,68,0.08);   border-color: rgba(239,68,68,0.25);  color: #fca5a5; }
+.console-status-bar.status-loading { background: rgba(124,92,252,0.08);  border-color: rgba(124,92,252,0.25); color: #c4b5fd; }
+
+.status-spinner {
+  width: 14px;
+  height: 14px;
+  border: 2px solid currentColor;
+  border-top-color: transparent;
+  border-radius: 50%;
+  animation: scSpin 0.75s linear infinite;
+  flex-shrink: 0;
+}
+
+/* ── Progress Bar ── */
+.console-progress-wrap {
+  height: 4px;
+  background: #111a1e;
+  border-radius: 100px;
+  overflow: hidden;
+  margin-bottom: 1.25rem;
+  border: 1px solid #1a2d25;
+}
+
+.console-progress-fill {
+  height: 100%;
+  border-radius: 100px;
+  background: linear-gradient(90deg, #00a651, #4ade80);
+  transition: width 0.4s cubic-bezier(0.34,1.56,0.64,1);
+  position: relative;
+  overflow: hidden;
+}
+
+.console-progress-fill::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
+  animation: scSweep 1.2s ease infinite;
+}
+
+/* ── Console Grid ── */
 .console-grid {
   display: grid;
-  gap: 1.5rem;
-  grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+  gap: 1.25rem;
+  grid-template-columns: repeat(auto-fit, minmax(380px, 1fr));
 }
 
-.status-message {
-  grid-column: 1 / -1;
-  padding: 1rem;
-  background: #1e293b;
-  border: 1px solid #334155;
-  border-radius: 8px;
+/* ── Console Card ── */
+.console-card {
+  background: #0e1619;
+  border: 1px solid #1a2d25;
+  border-radius: 16px;
+  padding: 1.5rem;
+  transition: border-color 0.25s ease, box-shadow 0.25s ease;
+  animation: scFadeUp 0.4s ease both;
+  position: relative;
+  overflow: hidden;
+}
+
+.console-card::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, rgba(255,255,255,0.015) 0%, transparent 60%);
+  pointer-events: none;
+}
+
+.console-card:hover {
+  border-color: #1e3d2e;
+  box-shadow: 0 8px 28px rgba(0,0,0,0.3);
+}
+
+.console-card h3 {
+  font-size: 0.9rem;
+  font-weight: 800;
+  color: #e2f0e8;
+  margin-bottom: 1rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.console-card h3 .card-icon {
+  font-size: 1.1rem;
+}
+
+.card-tag {
+  margin-left: auto;
+  font-size: 0.6rem;
+  padding: 0.15rem 0.5rem;
+  border-radius: 100px;
+  background: rgba(0,166,81,0.08);
+  color: #00a651;
+  font-family: 'DM Mono', monospace;
+  letter-spacing: 0.07em;
+  border: 1px solid #1a2d25;
+  font-weight: 700;
+}
+
+/* ── Form Inputs ── */
+.console-label {
+  display: block;
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: #6b8c78;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-family: 'DM Mono', monospace;
+  margin-bottom: 0.45rem;
+}
+
+.console-input,
+.console-select {
+  width: 100%;
+  padding: 0.7rem 1rem;
+  background: #111a1e;
+  border: 1.5px solid #1a2d25;
+  border-radius: 10px;
+  color: #e2f0e8;
+  font-size: 0.875rem;
+  font-family: 'Nunito', sans-serif;
+  font-weight: 600;
+  transition: border-color 0.2s, box-shadow 0.2s;
+  margin-bottom: 1rem;
+}
+
+.console-input:focus,
+.console-select:focus {
+  outline: none;
+  border-color: #00a651;
+  box-shadow: 0 0 0 3px rgba(0,166,81,0.12);
+}
+
+.console-select {
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8'%3E%3Cpath fill='%236b8c78' d='M6 8L0 0h12z'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 1rem center;
+  padding-right: 2.5rem;
+  cursor: pointer;
+}
+
+/* ── Toggle / Checkbox ── */
+.console-toggle-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.65rem 0;
+  border-bottom: 1px solid #1a2d25;
+}
+
+.console-toggle-row:last-child { border-bottom: none; }
+
+.console-toggle-label {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: #b4cfc0;
+}
+
+.console-toggle {
+  width: 36px;
+  height: 20px;
+  background: #1a2d25;
+  border-radius: 100px;
+  position: relative;
+  cursor: pointer;
+  border: none;
+  transition: background 0.2s;
+  flex-shrink: 0;
+}
+
+.console-toggle.on {
+  background: #00a651;
+}
+
+.console-toggle::after {
+  content: '';
+  position: absolute;
+  width: 14px;
+  height: 14px;
+  background: white;
+  border-radius: 50%;
+  top: 3px;
+  left: 3px;
+  transition: transform 0.2s cubic-bezier(0.34,1.56,0.64,1);
+  box-shadow: 0 1px 4px rgba(0,0,0,0.3);
+}
+
+.console-toggle.on::after {
+  transform: translateX(16px);
+}
+
+/* ── Merchant Count Slider ── */
+.count-display {
+  font-size: 2.2rem;
+  font-weight: 900;
+  color: #00a651;
+  font-family: 'DM Mono', monospace;
+  letter-spacing: -0.04em;
+  line-height: 1;
+  margin-bottom: 0.5rem;
+}
+
+.count-display span {
+  font-size: 0.9rem;
+  color: #6b8c78;
+  font-weight: 600;
+  margin-left: 0.3rem;
+}
+
+.console-slider {
+  width: 100%;
+  height: 5px;
+  appearance: none;
+  background: linear-gradient(90deg, #00a651 var(--pct, 50%), #1a2d25 var(--pct, 50%));
+  border-radius: 100px;
+  outline: none;
+  cursor: pointer;
+  margin: 0.5rem 0 0.75rem;
+}
+
+.console-slider::-webkit-slider-thumb {
+  appearance: none;
+  width: 18px;
+  height: 18px;
+  background: #00a651;
+  border-radius: 50%;
+  box-shadow: 0 0 0 3px rgba(0,166,81,0.25);
+  transition: box-shadow 0.2s;
+}
+
+.console-slider:hover::-webkit-slider-thumb {
+  box-shadow: 0 0 0 6px rgba(0,166,81,0.2);
+}
+
+.slider-range {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.68rem;
+  color: #3d5c4a;
+  font-family: 'DM Mono', monospace;
+}
+
+/* ── Speed Pills ── */
+.speed-pills {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.speed-pill {
+  padding: 0.5rem;
+  background: #111a1e;
+  border: 1.5px solid #1a2d25;
+  border-radius: 9px;
+  color: #6b8c78;
+  font-size: 0.78rem;
+  font-weight: 700;
+  font-family: 'Nunito', sans-serif;
+  cursor: pointer;
+  transition: all 0.2s ease;
   text-align: center;
-  font-weight: 500;
-  color: #e2e8f0;
 }
 
+.speed-pill:hover {
+  border-color: #00a651;
+  color: #e2f0e8;
+}
+
+.speed-pill.active {
+  background: rgba(0,166,81,0.1);
+  border-color: #00a651;
+  color: #4ade80;
+}
+
+/* ── File Upload ── */
+.file-upload-zone {
+  border: 2px dashed #1a2d25;
+  border-radius: 12px;
+  padding: 1.25rem;
+  text-align: center;
+  transition: all 0.2s ease;
+  cursor: pointer;
+  margin-bottom: 0.75rem;
+  position: relative;
+  overflow: hidden;
+}
+
+.file-upload-zone:hover,
+.file-upload-zone.dragover {
+  border-color: #00a651;
+  background: rgba(0,166,81,0.05);
+}
+
+.file-upload-zone.uploaded {
+  border-color: rgba(0,166,81,0.4);
+  background: rgba(0,166,81,0.06);
+  border-style: solid;
+}
+
+.upload-icon    { font-size: 1.5rem; margin-bottom: 0.4rem; }
+.upload-label   { font-size: 0.8rem; font-weight: 700; color: #b4cfc0; margin-bottom: 0.2rem; }
+.upload-hint    { font-size: 0.7rem; color: #3d5c4a; font-family: 'DM Mono', monospace; }
+.upload-success { font-size: 0.78rem; font-weight: 700; color: #4ade80; font-family: 'DM Mono', monospace; }
+
+/* ── Launch Button ── */
+.launch-btn {
+  width: 100%;
+  padding: 1rem;
+  background: linear-gradient(135deg, #00a651 0%, #008a44 100%);
+  color: white;
+  border: none;
+  border-radius: 13px;
+  font-size: 1rem;
+  font-weight: 800;
+  font-family: 'Nunito', sans-serif;
+  cursor: pointer;
+  transition: all 0.25s ease;
+  box-shadow: 0 4px 20px rgba(0,166,81,0.35);
+  letter-spacing: 0.02em;
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.6rem;
+  margin-top: 0.5rem;
+}
+
+.launch-btn::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.1), transparent);
+  animation: scSweep 2.5s ease infinite;
+}
+
+.launch-btn:hover:not(:disabled) {
+  transform: translateY(-3px);
+  box-shadow: 0 10px 32px rgba(0,166,81,0.5);
+}
+
+.launch-btn:active:not(:disabled) { transform: translateY(0); }
+
+.launch-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
+.launch-btn.running {
+  background: linear-gradient(135deg, #7c5cfc 0%, #5a3fd4 100%);
+  box-shadow: 0 4px 20px rgba(124,92,252,0.35);
+}
+
+/* ── Responsive ── */
 @media (max-width: 768px) {
-  .console-grid {
-    grid-template-columns: 1fr;
-  }
+  .simulation-console { padding: 1.25rem 1rem; }
+  .console-grid { grid-template-columns: 1fr; }
+  .speed-pills { grid-template-columns: repeat(3, 1fr); }
 }

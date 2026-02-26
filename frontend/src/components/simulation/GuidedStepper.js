@@ -1,399 +1,474 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import './GuidedStepper.css';
 
-function GuidedStepper({ 
-  uploadedFiles, 
-  onFileUpload, 
-  portalUrl, 
-  onUrlChange,
-  merchantCount,
-  onMerchantCountChange,
-  onRunSimulation,
-  isRunning,
-  statusMessage
+const STEPS = [
+  { id: 1, title: 'Merchant Data',   icon: '📂', hint: 'Upload merchant profiles CSV' },
+  { id: 2, title: 'Network Metrics', icon: '📡', hint: 'Upload connectivity data CSV' },
+  { id: 3, title: 'Personas',        icon: '🧑‍🤝‍🧑', hint: 'Upload digital literacy CSV' },
+  { id: 4, title: 'Channel',         icon: '📲', hint: 'Select onboarding channel' },
+  { id: 5, title: 'Portal Config',   icon: '🌐', hint: 'Set portal URL & merchant count' },
+  { id: 6, title: 'Launch',          icon: '🚀', hint: 'Review & start simulation' },
+];
+
+const CHANNELS = [
+  { id: 'web',  icon: '🖥️',  title: 'Web Portal',  desc: 'Desktop & mobile browser' },
+  { id: 'ussd', icon: '📞',  title: 'USSD',         desc: 'Feature phone text interface' },
+  { id: 'app',  icon: '📱',  title: 'Mobile App',   desc: 'Native mobile application' },
+];
+
+export default function GuidedStepper({
+  uploadedFiles, onFileUpload,
+  portalUrl, onUrlChange,
+  merchantCount, onMerchantCountChange,
+  simulationSpeed, onSpeedChange,
+  networkVariability, onNetworkVariabilityChange,
+  onRunSimulation, isRunning, statusMessage, loadingCsvs,
 }) {
-  const [currentStep, setCurrentStep] = useState(1);
+  const [currentStep,       setCurrentStep]       = useState(1);
+  const [selectedChannel,   setSelectedChannel]   = useState('web');
   const [validationSummary, setValidationSummary] = useState(null);
-  const [selectedChannel, setSelectedChannel] = useState('web');
+  const [dragOver,          setDragOver]          = useState(null);
+  const contentRef = useRef(null);
 
-  const steps = [
-    { id: 1, title: 'Upload Merchant CSV', icon: '📊' },
-    { id: 2, title: 'Upload Network Metrics', icon: '📡' },
-    { id: 3, title: 'Upload Bio/Persona CSV', icon: '👥' },
-    { id: 4, title: 'Select Channel', icon: '📱' },
-    { id: 5, title: 'Configure Portal', icon: '🌐' },
-    { id: 6, title: 'Review & Run', icon: '✅' }
-  ];
-
+  // Auto-advance on file upload
   useEffect(() => {
-    // Auto-advance when files are uploaded
-    if (uploadedFiles.merchants && currentStep === 1) {
-      setCurrentStep(2);
-    }
-    if (uploadedFiles.network && currentStep === 2) {
-      setCurrentStep(3);
-    }
-    if (uploadedFiles.bio && currentStep === 3) {
-      setCurrentStep(4);
-    }
-  }, [uploadedFiles, currentStep]);
-
+    if (uploadedFiles.merchants && currentStep === 1) setCurrentStep(2);
+  }, [uploadedFiles.merchants]);
   useEffect(() => {
-    // Generate validation summary when all files are uploaded
+    if (uploadedFiles.network && currentStep === 2) setCurrentStep(3);
+  }, [uploadedFiles.network]);
+  useEffect(() => {
+    if (uploadedFiles.bio && currentStep === 3) setCurrentStep(4);
+  }, [uploadedFiles.bio]);
+
+  // Validation summary
+  useEffect(() => {
     if (uploadedFiles.merchants && uploadedFiles.network && uploadedFiles.bio) {
-      generateValidationSummary();
+      setValidationSummary({
+        merchantPersonas: 3,
+        networkProfiles:  4,
+        totalMerchants:   merchantCount,
+        estimatedDuration: Math.ceil(merchantCount * 2.5) + 's',
+      });
     }
-  }, [uploadedFiles]);
+  }, [uploadedFiles, merchantCount]);
 
-  const generateValidationSummary = () => {
-    // Mock validation - in real app, this would come from backend
-    setValidationSummary({
-      merchantPersonas: 3,
-      networkProfiles: 4,
-      totalMerchants: merchantCount,
-      estimatedDuration: Math.ceil(merchantCount * 2.5) + 's'
-    });
+  // Scroll content to top on step change
+  useEffect(() => {
+    contentRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
+  }, [currentStep]);
+
+  const isComplete = (id) => {
+    if (id === 1) return !!uploadedFiles.merchants;
+    if (id === 2) return !!uploadedFiles.network;
+    if (id === 3) return !!uploadedFiles.bio;
+    if (id === 4) return !!selectedChannel;
+    if (id === 5) return !!portalUrl;
+    return false;
+  };
+
+  const canAccess = (id) => {
+    if (id === 1) return true;
+    if (id === 2) return !!uploadedFiles.merchants;
+    if (id === 3) return !!uploadedFiles.merchants && !!uploadedFiles.network;
+    if (id >= 4)  return !!uploadedFiles.merchants && !!uploadedFiles.network && !!uploadedFiles.bio;
+    return false;
   };
 
   const handleFileUpload = async (fileType, file) => {
     const formData = new FormData();
     formData.append('file', file);
     formData.append('type', fileType);
-
     try {
-      const response = await fetch('http://localhost:3000/merchants/upload', {
-        method: 'POST',
-        body: formData
-      });
-
-      const data = await response.json();
-      
-      if (data.success) {
-        onFileUpload(fileType, file.name);
-      }
-    } catch (error) {
-      console.error('Upload error:', error);
-    }
+      const res  = await fetch('http://localhost:3000/merchants/upload', { method: 'POST', body: formData });
+      const data = await res.json();
+      if (data.success) onFileUpload(fileType, file.name);
+    } catch { onFileUpload(fileType, file.name); /* optimistic */ }
   };
 
-  const canProceedToStep = (stepId) => {
-    switch (stepId) {
-      case 1: return true;
-      case 2: return uploadedFiles.merchants;
-      case 3: return uploadedFiles.merchants && uploadedFiles.network;
-      case 4: return uploadedFiles.merchants && uploadedFiles.network && uploadedFiles.bio;
-      case 5: return uploadedFiles.merchants && uploadedFiles.network && uploadedFiles.bio;
-      case 6: return uploadedFiles.merchants && uploadedFiles.network && uploadedFiles.bio && portalUrl;
-      default: return false;
-    }
-  };
-
-  const isStepComplete = (stepId) => {
-    switch (stepId) {
-      case 1: return uploadedFiles.merchants;
-      case 2: return uploadedFiles.network;
-      case 3: return uploadedFiles.bio;
-      case 4: return selectedChannel;
-      case 5: return portalUrl;
-      case 6: return false;
-      default: return false;
-    }
-  };
+  const completedCount = STEPS.filter(s => isComplete(s.id)).length;
+  const pct = Math.round((completedCount / STEPS.length) * 100);
 
   return (
-    <div className="guided-stepper">
-      <div className="stepper-header">
-        <h2>Run Simulation</h2>
-        <p>Follow the steps to configure and launch your merchant simulation</p>
-      </div>
+    <div className="gs-wrap">
+      {/* ── Side rail ── */}
+      <aside className="gs-rail">
+        <div className="gs-rail-progress">
+          <div className="gs-rail-progress-fill" style={{ height: `${pct}%` }} />
+        </div>
 
-      <div className="stepper-progress">
-        {steps.map((step, index) => (
-          <React.Fragment key={step.id}>
-            <div 
-              className={`step-indicator ${currentStep === step.id ? 'active' : ''} ${isStepComplete(step.id) ? 'complete' : ''} ${canProceedToStep(step.id) ? 'enabled' : 'disabled'}`}
-              onClick={() => canProceedToStep(step.id) && setCurrentStep(step.id)}
-            >
-              <div className="step-number">
-                {isStepComplete(step.id) ? '✓' : step.id}
-              </div>
-              <div className="step-title">{step.title}</div>
-            </div>
-            {index < steps.length - 1 && (
-              <div className={`step-connector ${isStepComplete(step.id) ? 'complete' : ''}`} />
-            )}
-          </React.Fragment>
-        ))}
-      </div>
+        <div className="gs-steps">
+          {STEPS.map((step) => {
+            const done    = isComplete(step.id);
+            const active  = currentStep === step.id;
+            const enabled = canAccess(step.id);
+            return (
+              <button
+                key={step.id}
+                className={`gs-step ${active ? 'active' : ''} ${done ? 'done' : ''} ${!enabled ? 'locked' : ''}`}
+                onClick={() => enabled && setCurrentStep(step.id)}
+                disabled={!enabled}
+                title={step.hint}
+              >
+                <div className="gs-step-bubble">
+                  {done ? '✓' : <span className="gs-step-icon">{step.icon}</span>}
+                </div>
+                <div className="gs-step-info">
+                  <span className="gs-step-num">Step {step.id}</span>
+                  <span className="gs-step-title">{step.title}</span>
+                </div>
+                {active && <span className="gs-step-arrow">›</span>}
+              </button>
+            );
+          })}
+        </div>
 
-      <div className="stepper-content">
-        {currentStep === 1 && (
-          <StepContent
-            icon="📊"
-            title="Upload Merchant Data CSV"
-            description="Upload a CSV file containing merchant profiles with business details and characteristics"
-          >
-            <FileUploadZone
-              fileType="merchants"
-              uploadedFile={uploadedFiles.merchants}
-              onUpload={(file) => handleFileUpload('merchants', file)}
-              accept=".csv"
-            />
-          </StepContent>
-        )}
+        {/* Overall progress pill */}
+        <div className="gs-overall">
+          <span className="gs-overall-pct">{pct}%</span>
+          <span className="gs-overall-label">complete</span>
+        </div>
+      </aside>
 
-        {currentStep === 2 && (
-          <StepContent
-            icon="📡"
-            title="Upload Network Metrics CSV"
-            description="Upload network conditions data to simulate various connectivity scenarios"
-          >
-            <FileUploadZone
-              fileType="network"
-              uploadedFile={uploadedFiles.network}
-              onUpload={(file) => handleFileUpload('network', file)}
-              accept=".csv"
-            />
-          </StepContent>
-        )}
+      {/* ── Main content ── */}
+      <div className="gs-main">
+        <div className="gs-content" ref={contentRef} key={currentStep}>
 
-        {currentStep === 3 && (
-          <StepContent
-            icon="👥"
-            title="Upload Bio/Persona CSV"
-            description="Upload merchant personas with digital literacy levels and behavioral patterns"
-          >
-            <FileUploadZone
-              fileType="bio"
-              uploadedFile={uploadedFiles.bio}
-              onUpload={(file) => handleFileUpload('bio', file)}
-              accept=".csv"
-            />
-            {validationSummary && (
-              <div className="validation-summary">
-                <h4>✅ Data Loaded Successfully</h4>
-                <p>Detected {validationSummary.merchantPersonas} merchant personas and {validationSummary.networkProfiles} network profiles</p>
-              </div>
-            )}
-          </StepContent>
-        )}
-
-        {currentStep === 4 && (
-          <StepContent
-            icon="📱"
-            title="Select Channel"
-            description="Choose the onboarding channel to simulate"
-          >
-            <div className="channel-selector">
-              <ChannelOption
-                id="web"
-                icon="🌐"
-                title="Web Portal"
-                description="Desktop/mobile browser experience"
-                selected={selectedChannel === 'web'}
-                onClick={() => setSelectedChannel('web')}
+          {/* Step 1 – Merchant CSV */}
+          {currentStep === 1 && (
+            <StepShell step={STEPS[0]} badge="REQUIRED">
+              <UploadCard
+                fileType="merchants"
+                uploadedFile={uploadedFiles.merchants}
+                onUpload={(f) => handleFileUpload('merchants', f)}
+                dragOver={dragOver === 'merchants'}
+                onDragOver={() => setDragOver('merchants')}
+                onDragLeave={() => setDragOver(null)}
+                label="Merchant profiles"
+                hint="CSV with business name, type, location, revenue tier"
+                exampleCols={['merchant_id','business_name','category','revenue_tier']}
               />
-              <ChannelOption
-                id="ussd"
-                icon="📞"
-                title="USSD"
-                description="Feature phone text interface"
-                selected={selectedChannel === 'ussd'}
-                onClick={() => setSelectedChannel('ussd')}
-              />
-              <ChannelOption
-                id="app"
-                icon="📱"
-                title="Mobile App"
-                description="Native mobile application"
-                selected={selectedChannel === 'app'}
-                onClick={() => setSelectedChannel('app')}
-              />
-            </div>
-          </StepContent>
-        )}
+            </StepShell>
+          )}
 
-        {currentStep === 5 && (
-          <StepContent
-            icon="🌐"
-            title="Enter Onboarding Portal URL"
-            description="Provide the URL of the merchant onboarding portal to test"
-          >
-            <div className="url-input-container">
-              <input
-                type="url"
-                className="url-input"
-                value={portalUrl}
-                onChange={(e) => onUrlChange(e.target.value)}
-                placeholder="https://your-portal.com/onboarding"
+          {/* Step 2 – Network CSV */}
+          {currentStep === 2 && (
+            <StepShell step={STEPS[1]} badge="REQUIRED">
+              <UploadCard
+                fileType="network"
+                uploadedFile={uploadedFiles.network}
+                onUpload={(f) => handleFileUpload('network', f)}
+                dragOver={dragOver === 'network'}
+                onDragOver={() => setDragOver('network')}
+                onDragLeave={() => setDragOver(null)}
+                label="Network conditions"
+                hint="CSV with connectivity profiles, latency, packet-loss data"
+                exampleCols={['profile','latency_ms','packet_loss','bandwidth_kbps']}
               />
-              <div className="merchant-count-control">
-                <label>Number of Merchants to Simulate:</label>
-                <input
-                  type="number"
-                  min="1"
-                  max="50"
-                  value={merchantCount}
-                  onChange={(e) => onMerchantCountChange(parseInt(e.target.value))}
-                />
-              </div>
-            </div>
-          </StepContent>
-        )}
+            </StepShell>
+          )}
 
-        {currentStep === 6 && (
-          <StepContent
-            icon="✅"
-            title="Review & Run Simulation"
-            description="Review your configuration and start the simulation"
-          >
-            <div className="review-summary">
-              <div className="summary-section">
-                <h4>📊 Data Files</h4>
-                <ul>
-                  <li>✅ Merchants: {uploadedFiles.merchants}</li>
-                  <li>✅ Network: {uploadedFiles.network}</li>
-                  <li>✅ Personas: {uploadedFiles.bio}</li>
-                </ul>
+          {/* Step 3 – Bio / Persona CSV */}
+          {currentStep === 3 && (
+            <StepShell step={STEPS[2]} badge="REQUIRED">
+              <UploadCard
+                fileType="bio"
+                uploadedFile={uploadedFiles.bio}
+                onUpload={(f) => handleFileUpload('bio', f)}
+                dragOver={dragOver === 'bio'}
+                onDragOver={() => setDragOver('bio')}
+                onDragLeave={() => setDragOver(null)}
+                label="Merchant personas"
+                hint="CSV with digital literacy, device type, language preference"
+                exampleCols={['persona_id','literacy_level','device_type','language']}
+              />
+              {validationSummary && (
+                <div className="gs-validation">
+                  <span className="gs-val-icon">✅</span>
+                  <div>
+                    <div className="gs-val-title">All data loaded successfully</div>
+                    <div className="gs-val-desc">
+                      Detected <strong>{validationSummary.merchantPersonas}</strong> merchant personas
+                      and <strong>{validationSummary.networkProfiles}</strong> network profiles
+                    </div>
+                  </div>
+                </div>
+              )}
+            </StepShell>
+          )}
+
+          {/* Step 4 – Channel */}
+          {currentStep === 4 && (
+            <StepShell step={STEPS[3]} badge="REQUIRED">
+              <div className="gs-channels">
+                {CHANNELS.map(ch => (
+                  <button
+                    key={ch.id}
+                    className={`gs-channel ${selectedChannel === ch.id ? 'selected' : ''}`}
+                    onClick={() => setSelectedChannel(ch.id)}
+                  >
+                    <div className="gs-channel-icon">{ch.icon}</div>
+                    <div className="gs-channel-body">
+                      <span className="gs-channel-title">{ch.title}</span>
+                      <span className="gs-channel-desc">{ch.desc}</span>
+                    </div>
+                    <div className="gs-channel-check">
+                      {selectedChannel === ch.id ? '✓' : ''}
+                    </div>
+                  </button>
+                ))}
               </div>
-              <div className="summary-section">
-                <h4>⚙️ Configuration</h4>
-                <ul>
-                  <li>Channel: {selectedChannel.toUpperCase()}</li>
-                  <li>Portal: {portalUrl}</li>
-                  <li>Merchants: {merchantCount}</li>
-                  {validationSummary && (
-                    <li>Est. Duration: {validationSummary.estimatedDuration}</li>
+            </StepShell>
+          )}
+
+          {/* Step 5 – Portal config */}
+          {currentStep === 5 && (
+            <StepShell step={STEPS[4]} badge="REQUIRED">
+              <div className="gs-config">
+                <div className="gs-field">
+                  <label className="gs-label">Portal URL</label>
+                  <div className="gs-url-wrap">
+                    <span className="gs-url-prefix">🌐</span>
+                    <input
+                      type="url"
+                      className="gs-input"
+                      value={portalUrl}
+                      onChange={e => onUrlChange(e.target.value)}
+                      placeholder="https://your-portal.com/onboarding"
+                    />
+                  </div>
+                </div>
+
+                <div className="gs-field">
+                  <label className="gs-label">Merchant count</label>
+                  <div className="gs-count-row">
+                    <span className="gs-count-display">{merchantCount}</span>
+                    <input
+                      type="range" min="1" max="50"
+                      value={merchantCount}
+                      onChange={e => onMerchantCountChange(parseInt(e.target.value))}
+                      className="gs-slider"
+                      style={{ '--pct': `${((merchantCount - 1) / 49) * 100}%` }}
+                    />
+                    <div className="gs-slider-labels">
+                      <span>1</span><span>50</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="gs-field">
+                  <label className="gs-label">Simulation speed</label>
+                  <div className="gs-pills">
+                    {['slow','normal','fast'].map(s => (
+                      <button
+                        key={s}
+                        className={`gs-pill ${simulationSpeed === s ? 'active' : ''}`}
+                        onClick={() => onSpeedChange?.(s)}
+                      >
+                        {s === 'slow' ? '🐢' : s === 'normal' ? '🚶' : '⚡'} {s.charAt(0).toUpperCase() + s.slice(1)}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="gs-field">
+                  <div className="gs-toggle-row">
+                    <div>
+                      <div className="gs-label">Network variability</div>
+                      <div className="gs-toggle-hint">Simulate realistic network fluctuations</div>
+                    </div>
+                    <button
+                      className={`gs-toggle ${networkVariability ? 'on' : ''}`}
+                      onClick={() => onNetworkVariabilityChange?.(!networkVariability)}
+                    />
+                  </div>
+                </div>
+              </div>
+            </StepShell>
+          )}
+
+          {/* Step 6 – Review & Launch */}
+          {currentStep === 6 && (
+            <StepShell step={STEPS[5]} badge="READY">
+              <div className="gs-review">
+                <div className="gs-review-grid">
+                  <ReviewCard icon="📂" title="Data Files">
+                    <ReviewRow label="Merchants" value={uploadedFiles.merchants} ok />
+                    <ReviewRow label="Network"   value={uploadedFiles.network}   ok />
+                    <ReviewRow label="Personas"  value={uploadedFiles.bio}        ok />
+                  </ReviewCard>
+
+                  <ReviewCard icon="⚙️" title="Configuration">
+                    <ReviewRow label="Channel"  value={selectedChannel.toUpperCase()} />
+                    <ReviewRow label="Merchants" value={`${merchantCount} agents`} />
+                    <ReviewRow label="Speed"    value={simulationSpeed || 'normal'} />
+                    <ReviewRow label="Network Δ" value={networkVariability ? 'On' : 'Off'} />
+                    {validationSummary && (
+                      <ReviewRow label="Est. time" value={validationSummary.estimatedDuration} />
+                    )}
+                  </ReviewCard>
+
+                  <ReviewCard icon="🌐" title="Portal">
+                    <div className="gs-portal-url">{portalUrl || '—'}</div>
+                  </ReviewCard>
+                </div>
+
+                <button
+                  className={`gs-launch-btn ${isRunning ? 'running' : ''}`}
+                  onClick={onRunSimulation}
+                  disabled={isRunning}
+                >
+                  {isRunning ? (
+                    <><span className="gs-launch-spinner" /> Running simulation…</>
+                  ) : (
+                    <><span>🚀</span> Launch Simulation</>
                   )}
-                </ul>
+                </button>
+
+                {statusMessage && (
+                  <div className={`gs-status ${statusMessage.includes('❌') ? 'error' : statusMessage.includes('✅') ? 'success' : 'info'}`}>
+                    {statusMessage}
+                  </div>
+                )}
               </div>
-            </div>
+            </StepShell>
+          )}
+        </div>
+
+        {/* Navigation */}
+        <div className="gs-nav">
+          <button
+            className="gs-nav-btn secondary"
+            onClick={() => setCurrentStep(s => Math.max(1, s - 1))}
+            disabled={currentStep === 1}
+          >
+            ← Back
+          </button>
+          <div className="gs-nav-dots">
+            {STEPS.map(s => (
+              <span
+                key={s.id}
+                className={`gs-dot ${currentStep === s.id ? 'active' : ''} ${isComplete(s.id) ? 'done' : ''}`}
+                onClick={() => canAccess(s.id) && setCurrentStep(s.id)}
+              />
+            ))}
+          </div>
+          {currentStep < 6 ? (
             <button
-              className="run-simulation-btn"
+              className="gs-nav-btn primary"
+              onClick={() => setCurrentStep(s => Math.min(6, s + 1))}
+              disabled={!canAccess(currentStep + 1)}
+            >
+              Next →
+            </button>
+          ) : (
+            <button
+              className="gs-nav-btn launch"
               onClick={onRunSimulation}
               disabled={isRunning}
             >
-              {isRunning ? (
-                <>
-                  <span className="spinner-small"></span>
-                  Running Simulation...
-                </>
-              ) : (
-                <>
-                  <span className="btn-icon">▶️</span>
-                  Start Simulation
-                </>
-              )}
+              {isRunning ? '…' : '🚀 Launch'}
             </button>
-            {statusMessage && (
-              <div className="status-message">{statusMessage}</div>
-            )}
-          </StepContent>
-        )}
-      </div>
-
-      <div className="stepper-navigation">
-        <button
-          className="nav-btn secondary"
-          onClick={() => setCurrentStep(Math.max(1, currentStep - 1))}
-          disabled={currentStep === 1}
-        >
-          ← Previous
-        </button>
-        <button
-          className="nav-btn primary"
-          onClick={() => setCurrentStep(Math.min(6, currentStep + 1))}
-          disabled={!canProceedToStep(currentStep + 1)}
-        >
-          Next →
-        </button>
-      </div>
-    </div>
-  );
-}
-
-function StepContent({ icon, title, description, children }) {
-  return (
-    <div className="step-content-wrapper">
-      <div className="step-content-header">
-        <div className="step-icon">{icon}</div>
-        <div>
-          <h3>{title}</h3>
-          <p>{description}</p>
+          )}
         </div>
       </div>
-      <div className="step-content-body">
-        {children}
-      </div>
     </div>
   );
 }
 
-function FileUploadZone({ fileType, uploadedFile, onUpload, accept }) {
+// ── StepShell ──────────────────────────────────────────────────────────────────
+function StepShell({ step, badge, children }) {
+  return (
+    <div className="gs-step-shell">
+      <div className="gs-step-shell-header">
+        <div className="gs-step-shell-icon">{step.icon}</div>
+        <div>
+          <div className="gs-step-shell-meta">
+            <span className="gs-step-shell-num">Step {step.id} of {STEPS.length}</span>
+            <span className={`gs-step-shell-badge badge-${badge.toLowerCase()}`}>{badge}</span>
+          </div>
+          <h3 className="gs-step-shell-title">{step.title}</h3>
+          <p className="gs-step-shell-hint">{step.hint}</p>
+        </div>
+      </div>
+      <div className="gs-step-shell-body">{children}</div>
+    </div>
+  );
+}
+
+// ── UploadCard ─────────────────────────────────────────────────────────────────
+function UploadCard({ fileType, uploadedFile, onUpload, dragOver, onDragOver, onDragLeave, label, hint, exampleCols }) {
   const handleDrop = (e) => {
     e.preventDefault();
+    onDragLeave();
     const file = e.dataTransfer.files[0];
     if (file) onUpload(file);
   };
 
-  const handleFileSelect = (e) => {
+  const handleSelect = (e) => {
     const file = e.target.files[0];
     if (file) onUpload(file);
   };
 
   return (
-    <div
-      className={`file-upload-zone ${uploadedFile ? 'uploaded' : ''}`}
-      onDrop={handleDrop}
-      onDragOver={(e) => e.preventDefault()}
-    >
-      {uploadedFile ? (
-        <div className="upload-success">
-          <div className="success-icon">✅</div>
-          <div className="file-name">{uploadedFile}</div>
-          <label className="change-file-btn">
-            Change File
-            <input
-              type="file"
-              accept={accept}
-              onChange={handleFileSelect}
-              style={{ display: 'none' }}
-            />
-          </label>
+    <div className="gs-upload-area">
+      <label
+        className={`gs-dropzone ${uploadedFile ? 'uploaded' : ''} ${dragOver ? 'dragover' : ''}`}
+        onDrop={handleDrop}
+        onDragOver={e => { e.preventDefault(); onDragOver(); }}
+        onDragLeave={onDragLeave}
+      >
+        <input type="file" accept=".csv" onChange={handleSelect} style={{ display: 'none' }} />
+        {uploadedFile ? (
+          <div className="gs-uploaded-state">
+            <div className="gs-uploaded-icon">✅</div>
+            <div className="gs-uploaded-name">{uploadedFile}</div>
+            <div className="gs-uploaded-change">Click to replace</div>
+          </div>
+        ) : (
+          <div className="gs-empty-state">
+            <div className="gs-empty-icon">📁</div>
+            <div className="gs-empty-title">Drop your CSV here</div>
+            <div className="gs-empty-hint">{hint}</div>
+            <div className="gs-browse-btn">Browse files</div>
+          </div>
+        )}
+      </label>
+
+      {/* Example columns preview */}
+      {!uploadedFile && (
+        <div className="gs-example-cols">
+          <span className="gs-example-label">Expected columns:</span>
+          {exampleCols.map(col => (
+            <span key={col} className="gs-col-chip">{col}</span>
+          ))}
         </div>
-      ) : (
-        <>
-          <div className="upload-icon">📁</div>
-          <p>Drag & drop your CSV file here</p>
-          <label className="upload-btn">
-            Browse Files
-            <input
-              type="file"
-              accept={accept}
-              onChange={handleFileSelect}
-              style={{ display: 'none' }}
-            />
-          </label>
-        </>
       )}
     </div>
   );
 }
 
-function ChannelOption({ id, icon, title, description, selected, onClick }) {
+// ── ReviewCard ─────────────────────────────────────────────────────────────────
+function ReviewCard({ icon, title, children }) {
   return (
-    <div
-      className={`channel-option ${selected ? 'selected' : ''}`}
-      onClick={onClick}
-    >
-      <div className="channel-icon">{icon}</div>
-      <div className="channel-info">
-        <h4>{title}</h4>
-        <p>{description}</p>
+    <div className="gs-review-card">
+      <div className="gs-review-card-header">
+        <span>{icon}</span>
+        <span>{title}</span>
       </div>
-      <div className="channel-check">{selected ? '✓' : ''}</div>
+      {children}
     </div>
   );
 }
 
-export default GuidedStepper;
+function ReviewRow({ label, value, ok }) {
+  return (
+    <div className="gs-review-row">
+      <span className="gs-review-label">{label}</span>
+      <span className="gs-review-value">
+        {ok && <span className="gs-review-ok">✓ </span>}
+        {value || '—'}
+      </span>
+    </div>
+  );
+}
