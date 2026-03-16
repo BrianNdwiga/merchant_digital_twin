@@ -12,6 +12,7 @@ RUN npm install --production
 # Copy source code
 COPY index.js ./
 COPY metrics.js ./
+COPY comparison.js ./
 
 # Expose port
 EXPOSE 3000

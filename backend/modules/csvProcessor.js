@@ -129,5 +129,7 @@ module.exports = {
   parseCsvFile,
   validateMerchant,
   transformToMerchantProfile,
-  getDefaultCsvPath: () => path.join(__dirname, '..', '..', 'data', 'merchants.csv')
+  getDefaultCsvPath: () => process.env.NODE_ENV === 'production'
+    ? '/data/merchant_onboarding_data.csv'
+    : path.join(__dirname, '..', '..', 'data', 'merchant_onboarding_data.csv')
 };

@@ -75,17 +75,18 @@ app.use(cors());
 app.use(express.json());
 
 // Serve mock portal HTML files
-const mockPortalDir = path.join(__dirname, '..', 'mock-portal');
+const mockPortalDir = process.env.NODE_ENV === 'production'
+  ? '/mock-portal'
+  : path.join(__dirname, '..', 'mock-portal');
 app.use('/mock-portal', express.static(mockPortalDir));
 
 // Configure multer for CSV uploads
+const dataDir = process.env.NODE_ENV === 'production' ? '/data' : path.join(__dirname, '..', 'data');
+
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
-    const uploadDir = path.join(__dirname, '..', 'data');
-    if (!fs.existsSync(uploadDir)) {
-      fs.mkdirSync(uploadDir, { recursive: true });
-    }
-    cb(null, uploadDir);
+    if (!fs.existsSync(dataDir)) fs.mkdirSync(dataDir, { recursive: true });
+    cb(null, dataDir);
   },
   filename: (req, file, cb) => {
     cb(null, `uploaded_${Date.now()}_${file.originalname}`);
@@ -136,12 +137,7 @@ app.get('/health', (req, res) => {
 
 app.get('/merchants/available-csvs', (req, res) => {
   try {
-    const dataDir = path.join(__dirname, '..', 'data');
-    
-    if (!fs.existsSync(dataDir)) {
-      return res.json({ csvFiles: {} });
-    }
-    
+    if (!fs.existsSync(dataDir)) return res.json({ csvFiles: {} });
     const files = fs.readdirSync(dataDir);
     const csvFiles = {};
     
@@ -185,7 +181,6 @@ app.post('/merchants/load-default', async (req, res) => {
       });
     }
     
-    const dataDir = path.join(__dirname, '..', 'data');
     const filePath = path.join(dataDir, fileName);
     
     if (!fs.existsSync(filePath)) {
@@ -691,7 +686,7 @@ app.post('/run-scenarios', async (req, res) => {
 
 app.get('/scenarios', (req, res) => {
   try {
-    const scenariosDir = path.join(__dirname, '..', 'scenarios');
+    const scenariosDir = process.env.NODE_ENV === 'production' ? '/scenarios' : path.join(__dirname, '..', 'scenarios');
     
     if (!fs.existsSync(scenariosDir)) {
       return res.json({ scenarios: [] });
@@ -715,9 +710,24 @@ app.get('/scenarios', (req, res) => {
   }
 });
 
+// ============================================================================
+// QUEUE STATS PROXY (for frontend polling)
+// ============================================================================
+
+app.get('/queue/stats', async (req, res) => {
+  const queueUrl = process.env.SIMULATION_QUEUE_URL || 'http://simulation-queue:3005';
+  try {
+    const response = await fetch(`${queueUrl}/stats`);
+    const stats = await response.json();
+    res.json(stats);
+  } catch (err) {
+    res.status(503).json({ error: 'Queue service unavailable', waiting: 0, active: 0, completed: 0, failed: 0 });
+  }
+});
+
 app.get('/scenarios/list', (req, res) => {
   try {
-    const scenariosDir = path.join(__dirname, '..', 'scenarios');
+    const scenariosDir = process.env.NODE_ENV === 'production' ? '/scenarios' : path.join(__dirname, '..', 'scenarios');
     const files = fs.readdirSync(scenariosDir).filter(f => f.endsWith('.json'));
     
     const scenarios = files.map(file => {
