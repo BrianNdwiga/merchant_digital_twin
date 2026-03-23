@@ -63,7 +63,6 @@ function buildMerchantJourney(merchantEvents) {
 
   // Apply final outcome to the last reached step
   const failedAtStep = outcome.failedAtStep; // 1-indexed
-  const stepsCompleted = outcome.stepsCompleted || 0;
   const success = outcome.success || false;
 
   if (success) {

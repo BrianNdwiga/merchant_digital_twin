@@ -15,6 +15,7 @@ function SimulationConsole({ onNavigate, showToast }) {
   const [loadingCsvs, setLoadingCsvs]     = useState(true);
   const [progress, setProgress]           = useState(null);
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     checkAvailableCsvs();
     fetchScenarios();
@@ -133,7 +134,7 @@ function SimulationConsole({ onNavigate, showToast }) {
       <div className="console-header">
         <div className="console-header-left">
           <h2>Run <span>Simulation</span></h2>
-          <p>// configure agents and launch onboarding simulation</p>
+          <p>{`// configure agents and launch onboarding simulation`}</p>
         </div>
         {uploadedFiles.merchants && (
           <div className="console-ready-badge">

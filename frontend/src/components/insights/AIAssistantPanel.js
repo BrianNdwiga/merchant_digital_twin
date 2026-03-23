@@ -12,7 +12,7 @@ function AIAssistantPanel({ insights, summary }) {
       insights.byStep ||
       insights.byNetwork
     )) {
-      generateInsightMessages(insights);
+      generateInsightMessages(insights); // eslint-disable-line react-hooks/exhaustive-deps
     }
   }, [insights]);
 
