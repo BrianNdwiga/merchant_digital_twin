@@ -2,56 +2,30 @@
 
 echo "========================================"
 echo "Merchant Digital Twin Simulation Platform"
-echo "2-Port Architecture"
+echo "1000+ Concurrent Merchant Architecture"
 echo "========================================"
 echo ""
 
-echo "Building Docker Image for Simulation Agent..."
-cd simulation-agent
-docker build -t simulation-agent:latest .
-
-if [ $? -ne 0 ]; then
-    echo "ERROR: Docker build failed!"
-    echo "Make sure Docker is running and try again."
+# Check Docker is running
+if ! docker info > /dev/null 2>&1; then
+    echo "ERROR: Docker is not running. Please start Docker and try again."
     exit 1
 fi
 
-cd ..
-echo "Docker image built successfully!"
+# Load scaling config
+export $(grep -v '^#' .env | xargs) 2>/dev/null || true
+SIM_WORKER_COUNT=${SIM_WORKER_COUNT:-20}
+MAX_CONTEXTS_PER_WORKER=${MAX_CONTEXTS_PER_WORKER:-50}
+
+echo "Scaling config:"
+echo "  Workers:          $SIM_WORKER_COUNT"
+echo "  Contexts/worker:  $MAX_CONTEXTS_PER_WORKER"
+echo "  Max concurrent:   $((SIM_WORKER_COUNT * MAX_CONTEXTS_PER_WORKER)) merchants"
 echo ""
 
-echo "Starting Backend (Port 3000)..."
-cd backend
-npm install
-npm run dev &
-BACKEND_PID=$!
-cd ..
-
-sleep 3
-
+echo "Starting all services via Docker Compose..."
+echo "(Redis, Queue Service, Workers, Insight Service, Merchant Generator, Mock Portal)"
 echo ""
-echo "Starting Frontend (Port 3001)..."
-cd frontend
-npm install
-npm start &
-FRONTEND_PID=$!
-cd ..
 
-echo ""
-echo "========================================"
-echo "Services starting..."
-echo "Backend API: http://localhost:3000"
-echo "Frontend UI: http://localhost:3001"
-echo "Docker Image: simulation-agent:latest"
-echo "========================================"
-echo ""
-echo "Backend PID: $BACKEND_PID"
-echo "Frontend PID: $FRONTEND_PID"
-echo ""
-echo "Press Ctrl+C to stop all services"
+docker compose up --build --scale simulation-worker=$SIM_WORKER_COUNT
 
-# Wait for user interrupt
-trap "echo 'Stopping services...'; kill $BACKEND_PID $FRONTEND_PID 2>/dev/null; exit" INT TERM
-
-# Keep script running
-wait

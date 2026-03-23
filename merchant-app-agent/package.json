@@ -1,0 +1,12 @@
+{
+  "name": "customer-agent",
+  "version": "1.0.0",
+  "description": "Simulates request customer to pay process via Appium",
+  "main": "agent.js",
+  "scripts": {
+    "start": "node agent.js"
+  },
+  "dependencies": {
+    "webdriverio": "^8.46.0"
+  }
+}

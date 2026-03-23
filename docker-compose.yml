@@ -1,14 +1,34 @@
-version: '3.8'
+# Port map (host):
+#   3000 - Backend API + WebSocket  (frontend proxy target)
+#   3001 - Merchant Generator
+#   3002 - Insight Service
+#   3005 - Simulation Queue
+#   6379 - Redis
+#   8888 - Mock Portal (nginx)
 
 services:
-  # Insight Service - Intelligence Layer
+  # ── Redis ──────────────────────────────────────────────────────────────────
+  redis:
+    image: redis:7-alpine
+    container_name: redis
+    ports:
+      - "6379:6379"
+    networks:
+      - digital-twin-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  # ── Insight Service (port 3002) ────────────────────────────────────────────
   insight-service:
     build:
       context: ./insight-service
       dockerfile: Dockerfile
     container_name: insight-service
     ports:
-      - "3000:3000"
+      - "3002:3000"
     networks:
       - digital-twin-network
     environment:
@@ -19,7 +39,7 @@ services:
       timeout: 5s
       retries: 3
 
-  # Merchant Generator - CSV-driven profiles
+  # ── Merchant Generator (port 3001) ─────────────────────────────────────────
   merchant-generator:
     build:
       context: ./merchant-generator
@@ -28,30 +48,98 @@ services:
     ports:
       - "3001:3001"
     volumes:
-      - ./data:/app/data:ro
+      - ./data:/data:ro
     networks:
       - digital-twin-network
     environment:
       - NODE_ENV=production
 
-  # Scenario Runner - Multi-scenario orchestration
-  scenario-runner:
+  # ── Mock Portal (port 8888) ────────────────────────────────────────────────
+  mock-portal:
+    image: nginx:alpine
+    container_name: mock-portal
+    volumes:
+      - ./mock-portal:/usr/share/nginx/html:ro
+    networks:
+      - digital-twin-network
+    ports:
+      - "8888:80"
+
+  # ── Simulation Queue (port 3005) ───────────────────────────────────────────
+  simulation-queue:
     build:
-      context: ./scenario-runner
+      context: ./services/simulationQueue
       dockerfile: Dockerfile
-    container_name: scenario-runner
+    container_name: simulation-queue
+    ports:
+      - "3005:3005"
     depends_on:
-      - insight-service
-      - merchant-generator
+      redis:
+        condition: service_healthy
+    networks:
+      - digital-twin-network
+    environment:
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - PORT=3005
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:3005/health', r => process.exit(r.statusCode === 200 ? 0 : 1)).on('error', () => process.exit(1))"]
+      interval: 8s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  # ── Simulation Workers (no host port needed) ───────────────────────────────
+  simulation-worker:
+    build:
+      context: ./workers
+      dockerfile: Dockerfile
+    init: true
+    depends_on:
+      redis:
+        condition: service_healthy
+      backend:
+        condition: service_started
+    networks:
+      - digital-twin-network
+    environment:
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - INSIGHT_SERVICE_URL=http://backend:3000
+      - MAX_CONTEXTS=${MAX_CONTEXTS_PER_WORKER:-5}
+    deploy:
+      replicas: ${SIM_WORKER_COUNT:-5}
+      resources:
+        limits:
+          memory: 2g
+          cpus: '1.0'
+        reservations:
+          memory: 512m
+
+  # ── Backend API + WebSocket (port 3000) ────────────────────────────────────
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: backend
+    ports:
+      - "3000:3000"
+    depends_on:
+      simulation-queue:
+        condition: service_started
     networks:
       - digital-twin-network
     environment:
       - NODE_ENV=production
-      - MERCHANT_GENERATOR_URL=http://merchant-generator:3001/generate-merchants-from-csv
-      - INSIGHT_SERVICE_URL=http://insight-service:3000
+      - PORT=3000
+      - SIMULATION_QUEUE_URL=http://simulation-queue:3005
+      - ONBOARDING_URL=http://mock-portal/index.html
+    env_file:
+      - ./backend/.env
     volumes:
-      - /var/run/docker.sock:/var/run/docker.sock
-      - ./scenarios:/app/scenarios:ro
+      - ./data:/data:ro
+      - ./scenarios:/scenarios:ro
+      - ./mock-portal:/mock-portal:ro
 
 networks:
   digital-twin-network:

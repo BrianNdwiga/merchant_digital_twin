@@ -1,0 +1,14 @@
+{
+  "name": "simulation-worker",
+  "version": "1.0.0",
+  "description": "Playwright browser pool worker - runs 30-50 merchant contexts per instance",
+  "main": "simulationWorker.js",
+  "scripts": {
+    "start": "node simulationWorker.js"
+  },
+  "dependencies": {
+    "bullmq": "^5.71.0",
+    "ioredis": "^5.10.0",
+    "playwright": "^1.58.2"
+  }
+}

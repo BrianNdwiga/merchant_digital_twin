@@ -16,7 +16,7 @@ function getEventCount() {
 
 // Clear all events
 function clearEvents() {
-  events = [];
+  events.length = 0;
 }
 
 // Get all merchant summaries (final outcomes)
@@ -260,21 +260,27 @@ function getInsightsByScenario() {
 
 // Get recent events for live log display
 function getRecentEvents(limit = 50) {
-  // Return most recent events, sorted by timestamp (newest first)
+  // Return most recent events with all fields preserved for BPMN visualization
   return events
     .slice(-limit)
     .reverse()
     .map(event => ({
-      merchantId: event.merchantId,
-      event: event.event,
-      eventType: event.eventType || event.event,
-      timestamp: event.timestamp || event.receivedAt,
-      step: event.step,
-      error: event.error,
-      reason: event.reason,
-      retryCount: event.retryCount,
-      latency: event.latency,
-      scenarioId: event.scenarioId
+      merchantId:     event.merchantId,
+      event:          event.event,
+      eventType:      event.eventType || event.event,
+      timestamp:      event.timestamp || event.receivedAt,
+      step:           event.step,
+      field:          event.field,
+      error:          event.error,
+      reason:         event.reason,
+      retryCount:     event.retryCount,
+      latency:        event.latency,
+      loadTimeMs:     event.loadTimeMs,
+      scenarioId:     event.scenarioId,
+      networkProfile: event.networkProfile,
+      digitalLiteracy: event.digitalLiteracy,
+      deviceType:     event.deviceType,
+      summary:        event.summary,
     }));
 }
 

@@ -22,7 +22,8 @@ const {
 const { compareScenarios, getAvailableScenarios } = require('./modules/comparison');
 const { runAllScenarios } = require('./modules/scenarioRunner');
 const { getAvailableChannels, runChannelSimulation } = require('./modules/channelSimulation');
-const { getInsights, aggregateInsights } = require('./modules/insightsEngine');
+const { runMerchantAppSimulation } = require('./modules/merchantAppSimulation');
+const { getInsights, aggregateInsights, computeOperationalMetrics, detectFrictionPoints, analyzePersonaStruggles } = require('./modules/insightsEngine');
 const { predictScenarioImpact } = require('./modules/aiScenarioEngine');
 
 const app = express();
@@ -75,17 +76,18 @@ app.use(cors());
 app.use(express.json());
 
 // Serve mock portal HTML files
-const mockPortalDir = path.join(__dirname, '..', 'mock-portal');
+const mockPortalDir = process.env.NODE_ENV === 'production'
+  ? '/mock-portal'
+  : path.join(__dirname, '..', 'mock-portal');
 app.use('/mock-portal', express.static(mockPortalDir));
 
 // Configure multer for CSV uploads
+const dataDir = process.env.NODE_ENV === 'production' ? '/data' : path.join(__dirname, '..', 'data');
+
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
-    const uploadDir = path.join(__dirname, '..', 'data');
-    if (!fs.existsSync(uploadDir)) {
-      fs.mkdirSync(uploadDir, { recursive: true });
-    }
-    cb(null, uploadDir);
+    if (!fs.existsSync(dataDir)) fs.mkdirSync(dataDir, { recursive: true });
+    cb(null, dataDir);
   },
   filename: (req, file, cb) => {
     cb(null, `uploaded_${Date.now()}_${file.originalname}`);
@@ -136,12 +138,7 @@ app.get('/health', (req, res) => {
 
 app.get('/merchants/available-csvs', (req, res) => {
   try {
-    const dataDir = path.join(__dirname, '..', 'data');
-    
-    if (!fs.existsSync(dataDir)) {
-      return res.json({ csvFiles: {} });
-    }
-    
+    if (!fs.existsSync(dataDir)) return res.json({ csvFiles: {} });
     const files = fs.readdirSync(dataDir);
     const csvFiles = {};
     
@@ -185,7 +182,6 @@ app.post('/merchants/load-default', async (req, res) => {
       });
     }
     
-    const dataDir = path.join(__dirname, '..', 'data');
     const filePath = path.join(dataDir, fileName);
     
     if (!fs.existsSync(filePath)) {
@@ -297,8 +293,25 @@ app.post('/merchants/upload', upload.single('csvFile'), async (req, res) => {
 });
 
 // ============================================================================
+// ============================================================================
 // INSIGHT ENDPOINTS
 // ============================================================================
+
+// Debounced insights aggregation — fires once event stream goes quiet
+let insightsDebounceTimer = null;
+let expectedMerchantCount = 0;   // set when a run starts
+let summaryCount = 0;             // tracks ONBOARDING_SUMMARY events received
+
+function scheduleInsightsUpdate(force = false) {
+  clearTimeout(insightsDebounceTimer);
+  const delay = force ? 0 : 3000; // 3s quiet window, or immediate on force
+  insightsDebounceTimer = setTimeout(() => {
+    aggregateInsights().then(insights => {
+      broadcastToClients({ type: 'insights', data: insights });
+      if (force) console.log('🧠 Final AI analysis complete');
+    }).catch(err => console.error('Error aggregating insights:', err));
+  }, delay);
+}
 
 app.post('/simulation-event', (req, res) => {
   try {
@@ -308,41 +321,44 @@ app.post('/simulation-event', (req, res) => {
     const missingFields = requiredFields.filter(field => !event[field]);
     
     if (missingFields.length > 0) {
-      return res.status(400).json({
-        error: 'Missing required fields',
-        missing: missingFields
-      });
+      return res.status(400).json({ error: 'Missing required fields', missing: missingFields });
     }
     
     storeEvent(event);
     console.log(`📊 Event received: ${event.merchantId} - ${event.event}`);
     
-    // Broadcast event to WebSocket clients
-    broadcastToClients({
-      type: 'event',
-      data: event
-    });
+    // Always broadcast the raw event immediately for live UI updates
+    broadcastToClients({ type: 'event', data: event });
 
-    // Trigger insights update and broadcast (async)
-    aggregateInsights().then(insights => {
+    // Track summary completions
+    if (event.event === 'ONBOARDING_SUMMARY') {
+      summaryCount++;
+      const allDone = expectedMerchantCount > 0 && summaryCount >= expectedMerchantCount;
+
+      // Broadcast a lightweight operational update immediately so the AI Assistant
+      // panel populates during the simulation without waiting for the full AI call
       broadcastToClients({
         type: 'insights',
-        data: insights
+        data: {
+          operational: computeOperationalMetrics(),
+          frictionPoints: detectFrictionPoints(),
+          personaStruggles: analyzePersonaStruggles(),
+          aiRecommendations: []
+        }
       });
-    }).catch(err => {
-      console.error('Error aggregating insights:', err);
-    });
+
+      if (allDone) {
+        console.log(`✅ All ${summaryCount} merchants complete — running final AI analysis`);
+        scheduleInsightsUpdate(true);
+      } else {
+        scheduleInsightsUpdate();
+      }
+    }
     
-    res.status(201).json({
-      success: true,
-      message: 'Event stored successfully'
-    });
+    res.status(201).json({ success: true, message: 'Event stored successfully' });
   } catch (error) {
     console.error('Error storing event:', error);
-    res.status(500).json({
-      error: 'Failed to store event',
-      message: error.message
-    });
+    res.status(500).json({ error: 'Failed to store event', message: error.message });
   }
 });
 
@@ -355,41 +371,24 @@ app.post('/events', (req, res) => {
     const missingFields = requiredFields.filter(field => !event[field]);
     
     if (missingFields.length > 0) {
-      return res.status(400).json({
-        error: 'Missing required fields',
-        missing: missingFields
-      });
+      return res.status(400).json({ error: 'Missing required fields', missing: missingFields });
     }
     
     storeEvent(event);
     console.log(`📊 Event received: ${event.merchantId} - ${event.event}`);
     
-    // Broadcast event to WebSocket clients
-    broadcastToClients({
-      type: 'event',
-      data: event
-    });
+    broadcastToClients({ type: 'event', data: event });
 
-    // Trigger insights update and broadcast (async)
-    aggregateInsights().then(insights => {
-      broadcastToClients({
-        type: 'insights',
-        data: insights
-      });
-    }).catch(err => {
-      console.error('Error aggregating insights:', err);
-    });
+    if (event.event === 'ONBOARDING_SUMMARY') {
+      summaryCount++;
+      const allDone = expectedMerchantCount > 0 && summaryCount >= expectedMerchantCount;
+      scheduleInsightsUpdate(allDone);
+    }
     
-    res.status(201).json({
-      success: true,
-      message: 'Event stored successfully'
-    });
+    res.status(201).json({ success: true, message: 'Event stored successfully' });
   } catch (error) {
     console.error('Error storing event:', error);
-    res.status(500).json({
-      error: 'Failed to store event',
-      message: error.message
-    });
+    res.status(500).json({ error: 'Failed to store event', message: error.message });
   }
 });
 
@@ -548,6 +547,24 @@ app.get('/events/recent', (req, res) => {
   }
 });
 
+// All events grouped by merchant — used by BPMN flow visualization
+app.get('/events/by-merchant', (req, res) => {
+  try {
+    const { events } = require('./modules/metrics');
+    const byMerchant = {};
+    events.forEach(ev => {
+      const id = ev.merchantId;
+      if (!id) return;
+      if (!byMerchant[id]) byMerchant[id] = [];
+      byMerchant[id].push(ev);
+    });
+    res.json({ merchants: byMerchant, count: Object.keys(byMerchant).length });
+  } catch (error) {
+    console.error('Error fetching merchant events:', error);
+    res.status(500).json({ error: 'Failed to fetch merchant events', merchants: {} });
+  }
+});
+
 // ============================================================================
 // CHANNEL SIMULATION ENDPOINTS
 // ============================================================================
@@ -567,7 +584,7 @@ app.get('/channels', (req, res) => {
 
 app.post('/simulate/channel', async (req, res) => {
   try {
-    const { merchantCount, portalUrl, simulationSpeed, networkVariability } = req.body;
+    const { merchantCount, channel, portalUrl, simulationSpeed, networkVariability } = req.body;
     
     if (!cachedMerchants || cachedMerchants.length === 0) {
       return res.status(400).json({
@@ -581,13 +598,14 @@ app.post('/simulate/channel', async (req, res) => {
     const selectedMerchants = cachedMerchants.slice(0, count);
     
     const config = {
+      channel: channel || 'WEB',
       portalUrl: portalUrl || 'http://localhost:3000/mock-portal/index.html',
       simulationSpeed: simulationSpeed || 'normal',
       networkVariability: networkVariability !== false,
       scenarioId: `portal-sim-${Date.now()}`
     };
     
-    console.log(`🚀 Starting web portal simulation with ${count} merchants`);
+    console.log(`🚀 Starting ${config.channel} simulation with ${count} merchants`);
     console.log(`🔗 Portal URL: ${config.portalUrl}`);
     
     // Run simulation in background
@@ -604,7 +622,7 @@ app.post('/simulate/channel', async (req, res) => {
     // Return immediately
     res.json({
       success: true,
-      message: 'Web portal simulation started',
+      message: `${config.channel} simulation started`,
       status: 'running',
       config: config,
       merchantCount: count
@@ -691,7 +709,7 @@ app.post('/run-scenarios', async (req, res) => {
 
 app.get('/scenarios', (req, res) => {
   try {
-    const scenariosDir = path.join(__dirname, '..', 'scenarios');
+    const scenariosDir = process.env.NODE_ENV === 'production' ? '/scenarios' : path.join(__dirname, '..', 'scenarios');
     
     if (!fs.existsSync(scenariosDir)) {
       return res.json({ scenarios: [] });
@@ -715,9 +733,97 @@ app.get('/scenarios', (req, res) => {
   }
 });
 
+// ============================================================================
+// ============================================================================
+// FRONTEND-TRIGGERED SIMULATION ENDPOINTS
+// ============================================================================
+
+app.get('/api/scenarios', (req, res) => {
+  try {
+    const scenariosDir = process.env.NODE_ENV === 'production' ? '/scenarios' : path.join(__dirname, '..', 'scenarios');
+    const files = fs.readdirSync(scenariosDir).filter(f => f.endsWith('.json'));
+    const scenarios = files.map(file => JSON.parse(fs.readFileSync(path.join(scenariosDir, file), 'utf8')));
+    res.json({ scenarios });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to list scenarios', message: error.message });
+  }
+});
+
+app.post('/api/run-scenario', async (req, res) => {
+  try {
+    const { scenarioId = 'BASELINE', merchantCount, onboardingUrl } = req.body;
+    const queueUrl = process.env.SIMULATION_QUEUE_URL || 'http://simulation-queue:3005';
+
+    // Load scenario config
+    const scenariosDir = process.env.NODE_ENV === 'production' ? '/scenarios' : path.join(__dirname, '..', 'scenarios');
+    const scenarioFiles = fs.readdirSync(scenariosDir).filter(f => f.endsWith('.json'));
+    const scenarios = scenarioFiles.map(f => JSON.parse(fs.readFileSync(path.join(scenariosDir, f), 'utf8')));
+    const scenario = scenarios.find(s => s.scenarioId === scenarioId) || scenarios[0];
+
+    if (!scenario) return res.status(404).json({ error: 'Scenario not found' });
+
+    // Use cached merchants
+    if (!cachedMerchants || cachedMerchants.length === 0) {
+      return res.status(400).json({ error: 'No merchants loaded', message: 'Upload a CSV first' });
+    }
+
+    const limit = merchantCount && merchantCount > 0 ? merchantCount : cachedMerchants.length;
+    // Always use the internal Docker URL — ignore any URL sent from the frontend
+    const internalPortalUrl = process.env.ONBOARDING_URL || 'http://mock-portal/index.html';
+    const merchants = cachedMerchants.slice(0, limit).map(m => ({
+      ...m,
+      scenarioId: scenario.scenarioId,
+      onboardingUrl: internalPortalUrl,
+      scenarioConfig: {
+        latencyMultiplier: scenario.latencyMultiplier,
+        retryBonus: scenario.retryBonus,
+        successProbabilityBonus: scenario.successProbabilityBonus
+      }
+    }));
+
+    // Clear previous events and reset counters
+    clearEvents();
+    summaryCount = 0;
+    expectedMerchantCount = merchants.length;
+
+    // Enqueue batch
+    const runId = `run-${Date.now()}`;
+    const response = await fetch(`${queueUrl}/enqueue-batch`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ merchants, scenarioId: scenario.scenarioId, onboardingUrl: internalPortalUrl })
+    });
+
+    if (!response.ok) throw new Error(`Queue returned ${response.status}`);
+    const result = await response.json();
+
+    console.log(`🚀 Run ${runId}: enqueued ${result.enqueued} jobs for scenario ${scenario.scenarioId}`);
+    res.json({ runId, enqueued: result.enqueued, scenarioId: scenario.scenarioId });
+
+  } catch (error) {
+    console.error('Error starting simulation run:', error.message);
+    res.status(500).json({ error: 'Failed to start simulation', message: error.message });
+  }
+});
+
+// ============================================================================
+// QUEUE STATS PROXY (for frontend polling)
+// ============================================================================
+
+app.get('/queue/stats', async (req, res) => {
+  const queueUrl = process.env.SIMULATION_QUEUE_URL || 'http://simulation-queue:3005';
+  try {
+    const response = await fetch(`${queueUrl}/stats`);
+    const stats = await response.json();
+    res.json(stats);
+  } catch (err) {
+    res.status(503).json({ error: 'Queue service unavailable', waiting: 0, active: 0, completed: 0, failed: 0 });
+  }
+});
+
 app.get('/scenarios/list', (req, res) => {
   try {
-    const scenariosDir = path.join(__dirname, '..', 'scenarios');
+    const scenariosDir = process.env.NODE_ENV === 'production' ? '/scenarios' : path.join(__dirname, '..', 'scenarios');
     const files = fs.readdirSync(scenariosDir).filter(f => f.endsWith('.json'));
     
     const scenarios = files.map(file => {
@@ -733,6 +839,298 @@ app.get('/scenarios/list', (req, res) => {
       error: 'Failed to list scenarios',
       message: error.message
     });
+  }
+});
+
+// ============================================================================
+// MERCHANT APP SIMULATION ENDPOINTS (Appium)
+// ============================================================================
+
+let cachedMerchantAppProfiles = null;
+
+// ── Appium step runner — streams each step as a WS event ─────────────────────
+async function runAppiumSteps(merchant, broadcastFn, scenario = 'normal') {
+  const PKG   = 'ke.safaricom.mpesa.business.uat';
+  const sleep = ms => new Promise(r => setTimeout(r, ms));
+
+  const SCENARIO_DELAYS = {
+    normal: 0, slow_network: 3000, network_timeout: 2000, slow_device: 2500, wrong_pin: 0, low_balance: 0
+  };
+  const extraDelay = SCENARIO_DELAYS[scenario] || 0;
+
+  function step(name, detail = '') {
+    const event = { merchantId: merchant.merchantId, event: 'APP_STEP', step: name, detail, channel: 'APP', userType: 'merchant', timestamp: Date.now() };
+    broadcastFn({ type: 'event', data: event });
+    console.log(`📱 [${merchant.merchantId}] ${name}${detail ? ': ' + detail : ''}`);
+  }
+
+  let driver;
+  try {
+    const { remote } = require('webdriverio');
+    step('CONNECTING', 'Connecting to Appium...');
+    driver = await remote({
+      hostname: process.env.APPIUM_HOST || 'localhost',
+      port:     parseInt(process.env.APPIUM_PORT || '4723'),
+      protocol: 'http',
+      path:     '/',
+      connectionRetryTimeout: 60000,
+      connectionRetryCount:   1,
+      capabilities: {
+        platformName:            'Android',
+        'appium:automationName': 'UiAutomator2',
+        'appium:deviceName':     process.env.APPIUM_DEVICE_NAME || '1208937448002025',
+        'appium:appPackage':     PKG,
+        'appium:appActivity':    'com.mpesa.splash.SplashActivity',
+        'appium:noReset':        true
+      }
+    });
+
+    step('APP_RESTART', 'Restarting app to home screen');
+    try { await driver.terminateApp(PKG); } catch { /* ignore */ }
+    await sleep(1500);
+    await driver.activateApp(PKG);
+    await sleep(3000);
+
+    // Handle login PIN screen if present
+    const loginPin = process.env.MPESA_PIN || merchant.pin || '';
+    try {
+      const pinPad = await driver.$(`id:${PKG}:id/pinNumPad`);
+      if (await pinPad.isDisplayed()) {
+        step('LOGIN_PIN', 'App locked — entering login PIN');
+        if (loginPin) {
+          for (const digit of loginPin) {
+            try { const cell = await driver.$(`id:${PKG}:id/cell${digit}`); await cell.click(); await sleep(400); } catch { /* ignore */ }
+          }
+          step('LOGIN_PIN_ENTERED', 'Login PIN entered — waiting for home screen');
+        } else {
+          step('LOGIN_PIN_SKIPPED', 'Login PIN screen detected but MPESA_PIN not set in .env');
+        }
+      }
+    } catch { /* no login PIN screen */ }
+
+    // Wait up to 20s for home screen
+    step('WAITING_FOR_HOME', 'Waiting for home screen to load...');
+    let homeLoaded = false;
+    for (let i = 0; i < 20; i++) {
+      await sleep(1000);
+      try { const nav = await driver.$(`id:${PKG}:id/bottomNavigationTransactions`); if (await nav.isDisplayed()) { homeLoaded = true; break; } } catch { /* not yet */ }
+    }
+    if (!homeLoaded) throw new Error('Home screen did not load within 20s — check if app is logged in');
+    step('HOME_LOADED', 'Home screen ready');
+
+    // Dismiss popup
+    try { const closeBtn = await driver.$(`id:${PKG}:id/closeButton`); if (await closeBtn.isDisplayed()) { await closeBtn.click(); await sleep(800); step('POPUP_DISMISSED', 'Dismissed overlay popup'); } } catch { /* no popup */ }
+
+    step('NAV_TRANSACT', 'Tapping Transact tab');
+    const transact = await driver.$(`id:${PKG}:id/bottomNavigationTransactions`);
+    await transact.click(); await sleep(2000);
+
+    step('TAP_REQUEST_PAYMENT', 'Tapping REQUEST PAYMENT menu item');
+    const reqPayment = await driver.$('//android.widget.FrameLayout[@clickable="true"][.//android.widget.TextView[@text="REQUEST PAYMENT"]]');
+    await reqPayment.click(); await sleep(2000);
+
+    step('TAP_REQUEST_ROW', 'Tapping REQUEST PAYMENT row');
+    const reqRow = await driver.$(`id:${PKG}:id/transactionLayoutContainer`);
+    await reqRow.click(); await sleep(2000);
+
+    step('TAP_FROM_CUSTOMER', 'Tapping REQUEST PAYMENT FROM CUSTOMER');
+    const fromCustomer = await driver.$('//android.view.ViewGroup[@clickable="true"][.//android.widget.TextView[@text="REQUEST PAYMENT FROM CUSTOMER"]]');
+    await fromCustomer.click(); await sleep(2000);
+
+    const phone = merchant.phone || '254712510792';
+    step('ENTER_PHONE', `Entering phone number ${phone}`);
+    const phoneField = await driver.$(`id:${PKG}:id/inputEditText`);
+    await phoneField.click(); await sleep(500);
+    await phoneField.setValue(phone); await sleep(800);
+
+    step('SUBMIT_PHONE', 'Tapping CONTINUE on phone screen');
+    const phoneSubmit = await driver.$(`id:${PKG}:id/submitButton`);
+    await phoneSubmit.click(); await sleep(3000);
+
+    if (scenario === 'slow_network') {
+      step('NETWORK_DELAY', `2G network — adding ${extraDelay}ms delay`);
+      broadcastFn({ type: 'event', data: { merchantId: merchant.merchantId, event: 'NETWORK_DELAY', networkProfile: '2G_EDGE', latency: extraDelay, channel: 'APP', timestamp: Date.now() } });
+      await sleep(extraDelay);
+    }
+    if (scenario === 'network_timeout') {
+      step('NETWORK_TIMEOUT', 'Simulating connection drop — retrying after 4s');
+      broadcastFn({ type: 'event', data: { merchantId: merchant.merchantId, event: 'TIMEOUT', step: 'after_phone', networkProfile: '3G_POOR', channel: 'APP', timestamp: Date.now() } });
+      await sleep(4000);
+      step('SCENARIO_INJECT', 'Connection restored — continuing');
+    }
+    if (scenario === 'slow_device') {
+      step('SCENARIO_INJECT', `Low-end device — extra ${extraDelay}ms render time`);
+      await sleep(extraDelay);
+    }
+
+    const baseAmount = merchant.installment_amount || 50;
+    const amount = scenario === 'low_balance' ? String(baseAmount * 1000) : String(baseAmount);
+    step('ENTER_AMOUNT', `Entering amount KES ${amount}${scenario === 'low_balance' ? ' (testing insufficient balance)' : ''}`);
+    for (const digit of amount) {
+      const cell = await driver.$(`id:${PKG}:id/cell${digit}`);
+      await cell.click(); await sleep(300);
+    }
+
+    if (scenario === 'slow_network') {
+      step('NETWORK_DELAY', '2G delay before CONTINUE');
+      broadcastFn({ type: 'event', data: { merchantId: merchant.merchantId, event: 'NETWORK_DELAY', networkProfile: '2G_EDGE', latency: extraDelay, channel: 'APP', timestamp: Date.now() } });
+      await sleep(extraDelay);
+    }
+    step('SUBMIT_AMOUNT', 'Tapping CONTINUE on amount screen');
+    const amountContinue = await driver.$(`id:${PKG}:id/continueButton`);
+    await amountContinue.click(); await sleep(3000);
+
+    const description = merchant.description || 'request payment';
+    step('ENTER_DESCRIPTION', `Entering description: "${description}"`);
+    const descField = await driver.$(`id:${PKG}:id/inputEditText`);
+    await descField.click(); await sleep(500);
+    await descField.setValue(description); await sleep(800);
+
+    step('SUBMIT_DESCRIPTION', 'Tapping CONTINUE on description screen');
+    const descSubmit = await driver.$(`id:${PKG}:id/submitButton`);
+    await descSubmit.click(); await sleep(3000);
+
+    step('CONFIRMATION_SCREEN', 'On confirmation screen — looking for confirm button');
+    let confirmed = false;
+    for (const btnId of ['submitButton', 'continueButton', 'confirmButton', 'btnConfirm', 'actionButton']) {
+      try {
+        const btn = await driver.$(`id:${PKG}:id/${btnId}`);
+        if (await btn.isDisplayed()) {
+          const txt = await btn.getAttribute('text');
+          step('TAP_CONFIRM', `Tapping ${btnId} ("${txt}")`);
+          await btn.click(); await sleep(3000);
+          confirmed = true; break;
+        }
+      } catch { /* try next */ }
+    }
+    if (!confirmed) {
+      try {
+        const anyBtn = await driver.$('//*[@clickable="true"][contains(@text,"CONFIRM") or contains(@text,"CONTINUE") or contains(@text,"PROCEED")]');
+        const txt = await anyBtn.getAttribute('text');
+        step('TAP_CONFIRM', `Tapping "${txt}" via XPath`);
+        await anyBtn.click(); await sleep(3000);
+      } catch { /* ignore */ }
+    }
+
+    const pin = process.env.MPESA_PIN || merchant.pin || '';
+    if (pin) {
+      if (scenario === 'wrong_pin') {
+        step('ENTER_PIN', 'Entering wrong PIN (scenario test)');
+        const wrongPin = pin.split('').map(d => String((parseInt(d) + 1) % 10)).join('');
+        await sleep(1000);
+        const pinNumPadW = await driver.$(`id:${PKG}:id/pinNumPad`);
+        for (const digit of wrongPin) {
+          try { const cell = await pinNumPadW.$(`android=new UiSelector().resourceId("${PKG}:id/cell${digit}")`); await cell.click(); await sleep(500); } catch { /* ignore */ }
+        }
+        broadcastFn({ type: 'event', data: { merchantId: merchant.merchantId, event: 'VALIDATION_ERROR', field: 'PIN', step: 'pin_entry', channel: 'APP', timestamp: Date.now() } });
+        step('SCENARIO_INJECT', 'Wrong PIN entered — waiting for error, then retrying with correct PIN');
+        await sleep(4000);
+      }
+
+      step('ENTER_PIN', `Entering ${pin.length}-digit PIN`);
+      await sleep(1000);
+      const pinNumPad = await driver.$(`id:${PKG}:id/pinNumPad`);
+      for (const digit of pin) {
+        try {
+          const cell = await pinNumPad.$(`android=new UiSelector().resourceId("${PKG}:id/cell${digit}")`);
+          await cell.click(); await sleep(500);
+        } catch {
+          const cellBounds = { '1': [120,1010], '2': [360,1010], '3': [600,1010], '4': [120,1147], '5': [360,1147], '6': [600,1147], '7': [120,1285], '8': [360,1285], '9': [600,1285], '0': [360,1423] };
+          if (cellBounds[digit]) {
+            await driver.action('pointer', { parameters: { pointerType: 'touch' } }).move({ x: cellBounds[digit][0], y: cellBounds[digit][1] }).down().pause(100).up().perform();
+            await sleep(500);
+          }
+        }
+      }
+      step('PIN_ENTERED', 'PIN entered — awaiting confirmation');
+      await sleep(5000);
+    } else {
+      step('PIN_SKIPPED', 'No PIN configured — set MPESA_PIN in .env to complete');
+    }
+
+    step('PAYMENT_COMPLETE', `Payment of KES ${amount} to ${phone} submitted`);
+    broadcastFn({ type: 'event', data: { merchantId: merchant.merchantId, event: 'PAYMENT_CONFIRMED', amount: merchant.installment_amount, channel: 'APP', userType: 'merchant', timestamp: Date.now() } });
+
+  } catch (err) {
+    step('ERROR', err.message);
+    broadcastFn({ type: 'event', data: { merchantId: merchant.merchantId, event: 'PAYMENT_FAILED', error: err.message, channel: 'APP', userType: 'merchant', timestamp: Date.now() } });
+  } finally {
+    if (driver) { try { await driver.deleteSession(); } catch { /* ignore */ } }
+  }
+}
+
+app.post('/merchants/app/upload', upload.single('csvFile'), async (req, res) => {
+  try {
+    if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
+    const merchants = await parseCsvFile(req.file.path);
+    cachedMerchantAppProfiles = merchants;
+    res.json({ success: true, merchantCount: merchants.length, merchants });
+  } catch (error) {
+    res.status(400).json({ error: 'CSV Processing Failed', message: error.message });
+  }
+});
+
+app.get('/merchants/app', async (req, res) => {
+  try {
+    if (!cachedMerchantAppProfiles) {
+      const csvPath = path.join(dataDir, 'merchant_onboarding_data.csv');
+      cachedMerchantAppProfiles = await parseCsvFile(csvPath);
+    }
+    res.json(cachedMerchantAppProfiles);
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to fetch merchant app profiles', message: error.message });
+  }
+});
+
+app.post('/simulate/merchant/app', async (req, res) => {
+  try {
+    const { merchantCount, simulationSpeed } = req.body;
+    if (!cachedMerchantAppProfiles || cachedMerchantAppProfiles.length === 0) {
+      try {
+        const csvPath = path.join(dataDir, 'merchant_onboarding_data.csv');
+        cachedMerchantAppProfiles = await parseCsvFile(csvPath);
+      } catch {
+        return res.status(400).json({ error: 'No merchant app profiles loaded', message: 'Please upload merchant CSV first' });
+      }
+    }
+    const count    = Math.min(merchantCount || 5, cachedMerchantAppProfiles.length);
+    const selected = cachedMerchantAppProfiles.slice(0, count);
+    const config   = { simulationSpeed: simulationSpeed || 'normal', scenarioId: `merchant-app-sim-${Date.now()}` };
+    console.log(`🚀 Starting merchant app simulation with ${count} merchants`);
+    runMerchantAppSimulation(selected, config, (p) => console.log('Merchant app sim progress:', p))
+      .then(r => console.log('✅ Merchant app simulation completed:', r))
+      .catch(e => console.error('❌ Merchant app simulation error:', e));
+    res.json({ success: true, message: 'Merchant app simulation started', merchantCount: count, config });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to start merchant app simulation', message: error.message });
+  }
+});
+
+// Appium-driven app simulation — streams each step as a WebSocket event
+app.post('/simulate/merchant/appium', async (req, res) => {
+  try {
+    const { merchantId, scenario = 'normal' } = req.body;
+    if (!cachedMerchantAppProfiles) {
+      try {
+        const csvPath = path.join(dataDir, 'merchant_onboarding_data.csv');
+        cachedMerchantAppProfiles = await parseCsvFile(csvPath);
+      } catch { /* no CSV — will use default profile below */ }
+    }
+    const merchant = merchantId
+      ? cachedMerchantAppProfiles?.find(m => m.merchantId === merchantId) || cachedMerchantAppProfiles?.[0]
+      : cachedMerchantAppProfiles?.[0];
+    const effectiveMerchant = merchant || {
+      merchantId: 'M001', phone: '254712510792', installment_amount: 50,
+      description: 'request payment', device_type: 'android_mid', network_profile: '4G_GOOD',
+      digital_literacy: 'intermediate', payment_method: 'mpesa', loan_balance: 4500,
+      days_until_due: 2, missed_payments: 0
+    };
+    res.json({ success: true, message: 'Appium simulation started', merchantId: effectiveMerchant.merchantId, scenario });
+    runAppiumSteps(effectiveMerchant, broadcastToClients, scenario).catch(err => {
+      console.error('Appium simulation error:', err);
+    });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to start Appium simulation', message: error.message });
   }
 });
 

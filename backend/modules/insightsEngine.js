@@ -1,6 +1,6 @@
 // Insights Engine - Real-time aggregation and AI-powered analysis
 const { events } = require('./metrics');
-const { isConfigured, generateAIRecommendations: getAIRecommendations } = require('./groqAI');
+const { generateAIRecommendations: getAIRecommendations } = require('./groqAI');
 
 // Aggregated insights cache
 let cachedInsights = {
@@ -122,6 +122,30 @@ function detectFrictionPoints() {
     });
   }
 
+  // Detect app-level errors (APP channel)
+  const appErrors = events.filter(e => e.event === 'APP_STEP' && e.step === 'ERROR');
+  if (appErrors.length >= 1) {
+    frictionPoints.push({
+      type: 'technical',
+      location: 'app_flow',
+      severity: appErrors.length >= 3 ? 'high' : 'medium',
+      count: appErrors.length,
+      description: `${appErrors.length} app automation error(s): ${appErrors[0]?.detail || 'unknown'}`
+    });
+  }
+
+  // Detect PIN entry failures (APP channel)
+  const pinErrors = events.filter(e => e.event === 'VALIDATION_ERROR' && e.field === 'PIN');
+  if (pinErrors.length >= 1) {
+    frictionPoints.push({
+      type: 'ux',
+      location: 'pin_entry',
+      severity: 'medium',
+      count: pinErrors.length,
+      description: `${pinErrors.length} incorrect PIN attempt(s) — users struggling with PIN entry`
+    });
+  }
+
   return frictionPoints;
 }
 
@@ -191,11 +215,14 @@ function analyzePersonaStruggles() {
 
 // Analyze network impact
 function analyzeNetworkImpact() {
-  const networkEvents = events.filter(e => 
-    e.event === 'PAGE_LOAD' || 
+  // Include summary events so we get per-profile success/failure counts
+  const networkEvents = events.filter(e =>
+    e.event === 'PAGE_LOAD' ||
     e.event === 'PAGE_LOAD_FAILED' ||
     e.event === 'NETWORK_DELAY' ||
-    e.event === 'TIMEOUT'
+    e.event === 'TIMEOUT' ||
+    e.event === 'ONBOARDING_SUMMARY' ||
+    e.event === 'SUMMARY'
   );
 
   if (networkEvents.length === 0) return [];
@@ -208,138 +235,112 @@ function analyzeNetworkImpact() {
       byProfile[profile] = {
         totalEvents: 0,
         failures: 0,
-        avgLatency: 0,
+        successes: 0,
         latencies: []
       };
     }
 
-    byProfile[profile].totalEvents++;
-    
-    if (e.event === 'PAGE_LOAD_FAILED' || e.event === 'TIMEOUT') {
-      byProfile[profile].failures++;
+    // Count page-level events
+    if (e.event === 'PAGE_LOAD' || e.event === 'PAGE_LOAD_FAILED' ||
+        e.event === 'NETWORK_DELAY' || e.event === 'TIMEOUT') {
+      byProfile[profile].totalEvents++;
+      if (e.event === 'PAGE_LOAD_FAILED' || e.event === 'TIMEOUT') {
+        byProfile[profile].failures++;
+      }
     }
 
-    if (e.latency) {
-      byProfile[profile].latencies.push(e.latency);
+    // Count summary outcomes
+    if (e.event === 'ONBOARDING_SUMMARY' || e.event === 'SUMMARY') {
+      byProfile[profile].totalEvents++;
+      if (e.summary?.success) byProfile[profile].successes++;
+      else byProfile[profile].failures++;
     }
+
+    // Collect latency — workers emit loadTimeMs on PAGE_LOAD
+    const lat = e.latency || e.loadTimeMs || e.loadTime;
+    if (lat) byProfile[profile].latencies.push(lat);
   });
 
   return Object.entries(byProfile).map(([profile, stats]) => {
-    const avgLatency = stats.latencies.length > 0 ?
-      Math.round(stats.latencies.reduce((a, b) => a + b, 0) / stats.latencies.length) : 0;
-    
-    const failureRate = stats.totalEvents > 0 ? 
-      parseFloat((stats.failures / stats.totalEvents * 100).toFixed(1)) : 0;
+    const avgLatency = stats.latencies.length > 0
+      ? Math.round(stats.latencies.reduce((a, b) => a + b, 0) / stats.latencies.length)
+      : 0;
+
+    const failureRate = stats.totalEvents > 0
+      ? parseFloat((stats.failures / stats.totalEvents * 100).toFixed(1))
+      : 0;
 
     return {
       profile,
       avgLatency,
       failureRate,
       failures: stats.failures,
+      successes: stats.successes,
       totalEvents: stats.totalEvents
     };
-  }).filter(item => item.totalEvents >= 2);
+  }).filter(item => item.totalEvents >= 1)
+    .sort((a, b) => b.failureRate - a.failureRate);
 }
 
-// Generate AI recommendations (uses Groq AI with rule-based fallback)
+// Compute failure breakdown by step (from ONBOARDING_SUMMARY failedAtStep)
+function computeByStep() {
+  const summaries = events.filter(e => e.event === 'ONBOARDING_SUMMARY' || e.event === 'SUMMARY');
+  const stepNames = ['portal_landing', 'business_info', 'contact_info', 'documentation', 'submission'];
+  const byStep = {};
+
+  summaries.forEach(e => {
+    const s = e.summary || {};
+    const failedAt = s.failedAtStep;
+    const success = s.success;
+
+    // Count all merchants against the step they reached
+    const reachedStep = success ? stepNames[s.stepsCompleted - 1] : stepNames[(failedAt || 1) - 1];
+    const key = reachedStep || 'unknown';
+    if (!byStep[key]) byStep[key] = { total: 0, failed: 0 };
+    byStep[key].total++;
+    if (!success) byStep[key].failed++;
+  });
+
+  return byStep;
+}
+
+// Compute failure breakdown by literacy and network with avg duration
+function computeBySegment() {
+  const summaries = events.filter(e => e.event === 'ONBOARDING_SUMMARY' || e.event === 'SUMMARY');
+  const byLiteracy = {};
+  const byNetwork = {};
+
+  summaries.forEach(e => {
+    const s = e.summary || {};
+    const literacy = s.digitalLiteracy || 'unknown';
+    const network = s.networkProfile || 'unknown';
+    const success = s.success || false;
+    const duration = s.completionTimeMs || s.timeBeforeFailure || 0;
+
+    if (!byLiteracy[literacy]) byLiteracy[literacy] = { total: 0, failed: 0, totalDuration: 0 };
+    if (!byNetwork[network]) byNetwork[network] = { total: 0, failed: 0, totalDuration: 0 };
+
+    byLiteracy[literacy].total++;
+    byNetwork[network].total++;
+    byLiteracy[literacy].totalDuration += duration;
+    byNetwork[network].totalDuration += duration;
+
+    if (!success) {
+      byLiteracy[literacy].failed++;
+      byNetwork[network].failed++;
+    }
+  });
+
+  // Add avgDuration
+  for (const v of Object.values(byLiteracy)) v.avgDuration = v.total > 0 ? Math.round(v.totalDuration / v.total) : 0;
+  for (const v of Object.values(byNetwork)) v.avgDuration = v.total > 0 ? Math.round(v.totalDuration / v.total) : 0;
+
+  return { byLiteracy, byNetwork };
+}
+
+// Generate AI recommendations — passes full breakdown to groqAI
 async function generateAIRecommendations(insights) {
-  // Try AI-powered recommendations first
-  if (isConfigured()) {
-    try {
-      const aiRecommendations = await getAIRecommendations(insights);
-      if (aiRecommendations && Array.isArray(aiRecommendations) && aiRecommendations.length > 0) {
-        console.log('✨ Using AI-powered recommendations');
-        return aiRecommendations;
-      }
-    } catch (error) {
-      console.warn('AI recommendations failed, using rule-based fallback:', error.message);
-    }
-  }
-
-  // Fallback to rule-based recommendations
-  console.log('📋 Using rule-based recommendations');
-  const recommendations = [];
-
-  // Recommendation based on friction points
-  insights.frictionPoints.forEach(friction => {
-    if (friction.type === 'validation' && friction.severity === 'high') {
-      recommendations.push({
-        priority: 'high',
-        category: 'ux',
-        title: `Improve validation for ${friction.location}`,
-        description: `${friction.count} validation errors detected. Consider adding inline help text or examples.`,
-        impact: 'Could reduce drop-off rate by 15-25%',
-        effort: 'low'
-      });
-    }
-
-    if (friction.type === 'technical' && friction.location === 'page_load') {
-      recommendations.push({
-        priority: 'critical',
-        category: 'performance',
-        title: 'Optimize page load performance',
-        description: `${friction.count} page load failures. Check server response times and asset sizes.`,
-        impact: 'Could improve completion rate by 20-30%',
-        effort: 'medium'
-      });
-    }
-
-    if (friction.type === 'ux' && friction.location === 'document_upload') {
-      recommendations.push({
-        priority: 'medium',
-        category: 'ux',
-        title: 'Simplify document upload flow',
-        description: `${friction.count} users confused. Add visual guides or reduce required documents.`,
-        impact: 'Could reduce confusion-related drop-offs by 30%',
-        effort: 'low'
-      });
-    }
-  });
-
-  // Recommendations based on persona struggles
-  insights.personaStruggles.forEach(struggle => {
-    if (struggle.category === 'literacy' && struggle.failureRate >= 50) {
-      recommendations.push({
-        priority: 'high',
-        category: 'accessibility',
-        title: `Support for ${struggle.persona} users`,
-        description: `${struggle.failureRate}% failure rate. Add tooltips, simplified language, or video guides.`,
-        impact: 'Could improve success rate for this segment by 40%',
-        effort: 'medium'
-      });
-    }
-
-    if (struggle.category === 'network' && struggle.failureRate >= 50) {
-      recommendations.push({
-        priority: 'high',
-        category: 'performance',
-        title: `Optimize for ${struggle.persona}`,
-        description: `${struggle.failureRate}% failure rate. Reduce page weight and add offline support.`,
-        impact: 'Could improve success rate for this segment by 35%',
-        effort: 'high'
-      });
-    }
-  });
-
-  // Recommendations based on network impact
-  insights.networkImpact.forEach(impact => {
-    if (impact.avgLatency > 2000 && impact.failureRate > 20) {
-      recommendations.push({
-        priority: 'high',
-        category: 'performance',
-        title: `Optimize for ${impact.profile} connections`,
-        description: `Average latency ${impact.avgLatency}ms with ${impact.failureRate}% failure rate.`,
-        impact: 'Could reduce abandonment by 25%',
-        effort: 'medium'
-      });
-    }
-  });
-
-  // Sort by priority
-  const priorityOrder = { critical: 0, high: 1, medium: 2, low: 3 };
-  return recommendations.sort((a, b) => 
-    priorityOrder[a.priority] - priorityOrder[b.priority]
-  ).slice(0, 8); // Top 8 recommendations
+  return getAIRecommendations(insights);
 }
 
 // Main insights aggregation function
@@ -348,12 +349,17 @@ async function aggregateInsights() {
   const frictionPoints = detectFrictionPoints();
   const personaStruggles = analyzePersonaStruggles();
   const networkImpact = analyzeNetworkImpact();
+  const byStep = computeByStep();
+  const { byLiteracy, byNetwork } = computeBySegment();
 
   const insights = {
     operational,
     frictionPoints,
     personaStruggles,
-    networkImpact
+    networkImpact,
+    byStep,
+    byLiteracy,
+    byNetwork
   };
 
   const aiRecommendations = await generateAIRecommendations(insights);

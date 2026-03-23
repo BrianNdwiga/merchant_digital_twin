@@ -1,11 +1,6 @@
 FROM node:20-alpine
-
 WORKDIR /app
-
-COPY package.json ./
+COPY package*.json ./
 RUN npm install --production
-
 COPY index.js ./
-RUN mkdir -p /app/scenarios
-
 CMD ["node", "index.js"]

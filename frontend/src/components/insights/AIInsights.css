@@ -215,9 +215,11 @@
 
 .network-stats {
   display: flex;
-  gap: 16px;
+  flex-wrap: wrap;
+  gap: 8px 16px;
   font-size: 12px;
   opacity: 0.8;
+  margin-bottom: 8px;
 }
 
 /* No Issues State */

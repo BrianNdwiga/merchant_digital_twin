@@ -109,7 +109,9 @@ async function parseCsvFile(filePath) {
 
 // Get default CSV file path
 function getDefaultCsvPath() {
-  return path.join(__dirname, '..', 'data', 'merchants.csv');
+  return process.env.NODE_ENV === 'production'
+    ? '/data/merchant_onboarding_data.csv'
+    : path.join(__dirname, '..', 'data', 'merchant_onboarding_data.csv');
 }
 
 module.exports = {

@@ -1,14 +1,15 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import './App.css';
 import Dashboard from './components/Dashboard';
 import SimulationConsole from './components/SimulationConsole';
 import LiveInsights from './components/LiveInsights';
 import ScenarioTesting from './components/ScenarioTesting';
+import MerchantAppConsole from './components/MerchantAppConsole';
 
 function App() {
   const [activeTab, setActiveTab] = useState('dashboard');
   const [backendStatus, setBackendStatus] = useState('checking');
-  const [prevTab, setPrevTab] = useState(null);
+
 
   useEffect(() => {
     const checkBackend = async () => {
@@ -26,7 +27,6 @@ function App() {
   }, []);
 
   const handleNavigate = (tab) => {
-    setPrevTab(activeTab);
     setActiveTab(tab);
   };
 
@@ -35,6 +35,7 @@ function App() {
     { id: 'console',   label: 'Run Simulation', icon: '🚀' },
     { id: 'insights',  label: 'Live Insights', icon: '🔭' },
     { id: 'testing',   label: 'Scenarios', icon: '🧩' },
+    { id: 'merchants-app', label: 'Business App Simulation', icon: '💳' },
   ];
 
   return (
@@ -74,6 +75,7 @@ function App() {
           {activeTab === 'console'   && <SimulationConsole onNavigate={handleNavigate} />}
           {activeTab === 'insights'  && <LiveInsights />}
           {activeTab === 'testing'   && <ScenarioTesting />}
+          {activeTab === 'merchants-app' && <MerchantAppConsole onNavigate={handleNavigate} />}
         </div>
       </main>
     </div>

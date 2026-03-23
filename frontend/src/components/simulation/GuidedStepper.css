@@ -865,3 +865,37 @@
   .gs-step-shell-icon { font-size: 2rem; }
   .gs-step-shell-title { font-size: 1.15rem; }
 }
+
+/* ── Scenario selector ── */
+.gs-scenario-select-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.gs-scenario-select {
+  width: 100%;
+  padding: 0.65rem 0.85rem;
+  background: #0e1619;
+  border: 1.5px solid #1a2d25;
+  border-radius: 10px;
+  color: #e2f0e8;
+  font-size: 0.82rem;
+  font-family: 'DM Mono', monospace;
+  cursor: pointer;
+  transition: border-color 0.2s, box-shadow 0.2s;
+  appearance: none;
+}
+
+.gs-scenario-select:focus {
+  outline: none;
+  border-color: #00a651;
+  box-shadow: 0 0 0 3px rgba(0,166,81,0.12);
+}
+
+.gs-scenario-hint {
+  font-size: 0.7rem;
+  color: #6b8c78;
+  font-family: 'DM Mono', monospace;
+  letter-spacing: 0.03em;
+}

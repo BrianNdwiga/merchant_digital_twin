@@ -1,17 +1,15 @@
-const { exec } = require('child_process');
-const util = require('util');
-const execPromise = util.promisify(exec);
+// Channel Simulation - delegates to Redis queue for scalable execution
 
-const DOCKER_IMAGE = 'simulation-agent:latest';
+const SIMULATION_QUEUE_URL = process.env.SIMULATION_QUEUE_URL || 'http://simulation-queue:3005';
+const ONBOARDING_URL = process.env.ONBOARDING_URL || 'http://mock-portal/index.html';
 
 // Available channels
 const CHANNELS = {
-  WEB: { name: 'Web Portal', enabled: true },
-  USSD: { name: 'USSD', enabled: false },
-  APP: { name: 'Mobile App', enabled: false }
+  WEB:  { name: 'Web Portal',  enabled: true },
+  USSD: { name: 'USSD',        enabled: true },
+  APP:  { name: 'Mobile App',  enabled: true },
 };
 
-// Get available channels
 function getAvailableChannels() {
   return Object.entries(CHANNELS).map(([key, value]) => ({
     id: key,
@@ -20,134 +18,57 @@ function getAvailableChannels() {
   }));
 }
 
-// Spawn agent container with channel configuration
-async function spawnChannelAgent(merchant, channelConfig, progressCallback) {
-  const containerName = `agent_${merchant.merchantId}_${Date.now()}`;
-  
-  // Convert localhost URLs to host.docker.internal for Docker container access
-  let portalUrl = channelConfig.portalUrl || 'http://localhost:3000/mock-portal/index.html';
-  if (portalUrl.includes('localhost')) {
-    portalUrl = portalUrl.replace('localhost', 'host.docker.internal');
-  }
-  
-  // Merge merchant profile with portal URL from config
-  const agentProfile = {
-    ...merchant,
-    portalUrl: portalUrl,
-    scenarioId: channelConfig.scenarioId || 'channel-simulation'
-  };
-  
-  const merchantProfile = JSON.stringify(agentProfile).replace(/"/g, '\\"');
-  const insightServiceUrl = process.env.INSIGHT_SERVICE_URL || 'http://host.docker.internal:3000';
-  
-  const dockerCmd = `docker run --rm --name ${containerName} -e MERCHANT_PROFILE="${merchantProfile}" -e INSIGHT_SERVICE_URL="${insightServiceUrl}" ${DOCKER_IMAGE}`;
-  
-  console.log(`🐳 Spawning container: ${containerName}`);
-  console.log(`   Portal: ${agentProfile.portalUrl}`);
-  console.log(`   Device: ${agentProfile.deviceType} | Network: ${agentProfile.networkProfile}`);
-  console.log(`   Literacy: ${agentProfile.digitalLiteracy} | Income: ${agentProfile.incomeLevel}`);
-  
+// Enqueue merchants to the simulation queue instead of spawning containers
+async function runChannelSimulation(merchants, config, progressCallback) {
+  const scenarioId = config.scenarioId || `channel-sim-${Date.now()}`;
+
+  // Enrich merchants with portal URL and channel
+  const enriched = merchants.map(m => ({
+    ...m,
+    scenarioId,
+    channel: (config.channel || 'WEB').toUpperCase(),
+    onboardingUrl: config.portalUrl || ONBOARDING_URL
+  }));
+
+  console.log(`\n🎯 Enqueueing ${enriched.length} merchants to simulation queue`);
+  console.log(`🔗 Portal: ${config.portalUrl || ONBOARDING_URL}`);
+
   if (progressCallback) {
-    progressCallback({
-      merchantId: merchant.merchantId,
-      status: 'starting',
-      message: `Spawning agent for ${merchant.merchantId}`,
-      portalUrl: agentProfile.portalUrl
-    });
+    progressCallback({ status: 'enqueueing', total: enriched.length });
   }
-  
+
   try {
-    const { stdout, stderr } = await execPromise(dockerCmd);
-    
-    console.log(`✅ Agent ${merchant.merchantId} completed successfully`);
-    
+    const response = await fetch(`${SIMULATION_QUEUE_URL}/enqueue-batch`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ merchants: enriched, scenarioId, onboardingUrl: config.portalUrl || ONBOARDING_URL })
+    });
+
+    if (!response.ok) throw new Error(`Queue service returned ${response.status}`);
+    const result = await response.json();
+
+    console.log(`✅ Enqueued ${result.enqueued} jobs for scenario ${scenarioId}`);
+
     if (progressCallback) {
-      progressCallback({
-        merchantId: merchant.merchantId,
-        status: 'completed',
-        message: `Agent ${merchant.merchantId} completed onboarding`,
-        output: stdout
-      });
+      progressCallback({ status: 'queued', enqueued: result.enqueued, scenarioId });
     }
-    
+
     return {
       success: true,
-      merchantId: merchant.merchantId,
-      output: stdout,
-      stderr: stderr
+      totalMerchants: enriched.length,
+      enqueued: result.enqueued,
+      scenarioId
     };
-    
-  } catch (error) {
-    console.error(`❌ Agent ${merchant.merchantId} failed: ${error.message}`);
-    
+  } catch (err) {
+    console.error('❌ Failed to enqueue merchants:', err.message);
     if (progressCallback) {
-      progressCallback({
-        merchantId: merchant.merchantId,
-        status: 'failed',
-        message: `Agent ${merchant.merchantId} failed: ${error.message}`
-      });
+      progressCallback({ status: 'error', error: err.message });
     }
-    
-    return {
-      success: false,
-      merchantId: merchant.merchantId,
-      error: error.message
-    };
+    throw err;
   }
-}
-
-// Run channel-based simulation for multiple merchants
-async function runChannelSimulation(merchants, config, progressCallback) {
-  const results = [];
-  const startTime = Date.now();
-  
-  console.log(`\n🎯 Starting web portal simulation`);
-  console.log(`🔗 Portal: ${config.portalUrl}`);
-  console.log(`👥 Merchants: ${merchants.length}`);
-  console.log('═'.repeat(60));
-  
-  // Determine concurrency based on simulation speed
-  const concurrent = config.simulationSpeed === 'accelerated' ? 3 : 1;
-  
-  // Process merchants in batches
-  for (let i = 0; i < merchants.length; i += concurrent) {
-    const batch = merchants.slice(i, i + concurrent);
-    
-    const batchPromises = batch.map(merchant => 
-      spawnChannelAgent(merchant, config, progressCallback)
-    );
-    
-    const batchResults = await Promise.all(batchPromises);
-    results.push(...batchResults);
-    
-    // Progress update
-    if (progressCallback) {
-      progressCallback({
-        status: 'progress',
-        completed: Math.min(i + concurrent, merchants.length),
-        total: merchants.length
-      });
-    }
-  }
-  
-  const completionTime = Date.now() - startTime;
-  
-  console.log('═'.repeat(60));
-  console.log(`✅ Simulation completed in ${completionTime}ms`);
-  console.log(`   Success: ${results.filter(r => r.success).length}/${results.length}`);
-  
-  return {
-    success: true,
-    totalMerchants: merchants.length,
-    successCount: results.filter(r => r.success).length,
-    failureCount: results.filter(r => !r.success).length,
-    completionTimeMs: completionTime,
-    results: results
-  };
 }
 
 module.exports = {
   getAvailableChannels,
-  spawnChannelAgent,
   runChannelSimulation
 };
