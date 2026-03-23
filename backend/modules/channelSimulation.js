@@ -5,9 +5,9 @@ const ONBOARDING_URL = process.env.ONBOARDING_URL || 'http://mock-portal/index.h
 
 // Available channels
 const CHANNELS = {
-  WEB: { name: 'Web Portal', enabled: true },
-  USSD: { name: 'USSD', enabled: false },
-  APP: { name: 'Mobile App', enabled: false }
+  WEB:  { name: 'Web Portal',  enabled: true },
+  USSD: { name: 'USSD',        enabled: true },
+  APP:  { name: 'Mobile App',  enabled: true },
 };
 
 function getAvailableChannels() {
@@ -22,10 +22,11 @@ function getAvailableChannels() {
 async function runChannelSimulation(merchants, config, progressCallback) {
   const scenarioId = config.scenarioId || `channel-sim-${Date.now()}`;
 
-  // Enrich merchants with portal URL
+  // Enrich merchants with portal URL and channel
   const enriched = merchants.map(m => ({
     ...m,
     scenarioId,
+    channel: (config.channel || 'WEB').toUpperCase(),
     onboardingUrl: config.portalUrl || ONBOARDING_URL
   }));
 

@@ -238,9 +238,155 @@ async function waitForSlot() {
   }
 }
 
+// ── USSD Channel Simulation ───────────────────────────────────────────────────
+const USSD_STEPS = ['main_menu', 'business_name', 'business_type', 'phone_confirm', 'pin_entry'];
+const USSD_TIMEOUT_PROB = { '4G_GOOD': 0.02, '4G_UNSTABLE': 0.08, '3G_POOR': 0.15, '2G_EDGE': 0.25 };
+const USSD_INPUT_DELAY = { basic: 4000, intermediate: 2000, advanced: 1000 };
+
+async function runUSSDSimulation(merchant) {
+  const startTime = Date.now();
+  let currentStep = 0;
+  const maxSteps = USSD_STEPS.length;
+  const emit = (data) => emitEvent({ merchantId: merchant.merchantId, scenarioId: merchant.scenarioId || 'UNKNOWN', runId: merchant.runId || null, channel: 'USSD', ...data });
+
+  try {
+    for (const stepId of USSD_STEPS) {
+      currentStep++;
+      // USSD round-trip latency
+      const rtLatency = { '4G_GOOD': 300, '4G_UNSTABLE': 600, '3G_POOR': 1200, '2G_EDGE': 2500 }[merchant.networkProfile] || 800;
+      await sleep(rtLatency + random(0, rtLatency * 0.3));
+
+      // Session timeout check
+      if (Math.random() < (USSD_TIMEOUT_PROB[merchant.networkProfile] || 0.1)) {
+        await emit({ event: 'USSD_SESSION_TIMEOUT', step: stepId });
+        throw new Error(`USSD session timed out at step: ${stepId}`);
+      }
+
+      // User input delay
+      const inputDelay = USSD_INPUT_DELAY[merchant.digitalLiteracy] || 2000;
+      await sleep(inputDelay + random(0, 500));
+
+      // Wrong input for basic users
+      if (merchant.digitalLiteracy === 'basic' && Math.random() < 0.1) {
+        await emit({ event: 'USSD_WRONG_INPUT', step: stepId });
+        await sleep(rtLatency); // re-navigate
+      }
+
+      await emit({ event: 'USSD_STEP_COMPLETE', step: stepId });
+    }
+
+    const completionTimeMs = Date.now() - startTime;
+    const summary = { success: true, completionTimeMs, stepsCompleted: currentStep, totalSteps: maxSteps, channel: 'USSD', digitalLiteracy: merchant.digitalLiteracy, networkProfile: merchant.networkProfile };
+    await emit({ event: 'ONBOARDING_SUMMARY', summary });
+    return summary;
+  } catch (error) {
+    const summary = { success: false, error: error.message, failedAtStep: currentStep, totalSteps: maxSteps, timeBeforeFailure: Date.now() - startTime, channel: 'USSD', digitalLiteracy: merchant.digitalLiteracy, networkProfile: merchant.networkProfile };
+    await emit({ event: 'ONBOARDING_SUMMARY', summary });
+    return summary;
+  }
+}
+
+// ── App Channel Simulation ────────────────────────────────────────────────────
+const APP_SCREENS = ['splash', 'permissions', 'business_details', 'id_scan', 'selfie_verify', 'review_submit'];
+const APP_LOAD_TIME = { ios: 800, android_mid: 1200, android_low_end: 2500, feature_phone: 4000 };
+const SCAN_FAILURE_PROB = { ios: 0.05, android_mid: 0.10, android_low_end: 0.20, feature_phone: 0.40 };
+const APP_INTERACTION_DELAY = { basic: 3500, intermediate: 1800, advanced: 900 };
+
+function calcAppSuccessProbability(merchant) {
+  let p = 0.72;
+  if (merchant.digitalLiteracy === 'advanced')          p += 0.15;
+  else if (merchant.digitalLiteracy === 'intermediate') p += 0.08;
+  else if (merchant.digitalLiteracy === 'basic')        p -= 0.05;
+  if (merchant.networkProfile === '2G_EDGE')            p -= 0.18;
+  else if (merchant.networkProfile === '3G_POOR')       p -= 0.10;
+  else if (merchant.networkProfile === '4G_GOOD')       p += 0.05;
+  if (merchant.deviceType === 'ios')                    p += 0.08;
+  else if (merchant.deviceType === 'android_low_end')   p -= 0.08;
+  else if (merchant.deviceType === 'feature_phone')     p -= 0.20;
+  p += (merchant.patienceScore || 0.5) * 0.08;
+  p += merchant.scenarioConfig?.successProbabilityBonus || 0;
+  return Math.max(0.35, Math.min(0.97, p));
+}
+
+async function runAppSimulation(merchant) {
+  const startTime = Date.now();
+  let currentStep = 0;
+  const maxSteps = APP_SCREENS.length;
+  const deviceType = merchant.deviceType || 'android_mid';
+  const emit = (data) => emitEvent({ merchantId: merchant.merchantId, scenarioId: merchant.scenarioId || 'UNKNOWN', runId: merchant.runId || null, channel: 'APP', ...data });
+
+  try {
+    for (const screenId of APP_SCREENS) {
+      currentStep++;
+      const loadTime = (APP_LOAD_TIME[deviceType] || 1500) + random(0, 500);
+      await sleep(loadTime);
+
+      if (['id_scan', 'selfie_verify', 'review_submit'].includes(screenId)) {
+        const netLatency = { '4G_GOOD': 100, '4G_UNSTABLE': 350, '3G_POOR': 800, '2G_EDGE': 1800 }[merchant.networkProfile] || 500;
+        await sleep(netLatency + random(0, netLatency * 0.25));
+      }
+
+      if (screenId === 'permissions') {
+        if (merchant.digitalLiteracy === 'basic' && Math.random() < 0.25) {
+          await emit({ event: 'APP_PERMISSION_DENIED', step: screenId, reason: 'user_confusion' });
+          await sleep(random(2000, 5000));
+        }
+        await emit({ event: 'APP_SCREEN_COMPLETE', step: screenId });
+        continue;
+      }
+
+      if (screenId === 'id_scan' || screenId === 'selfie_verify') {
+        const failProb = SCAN_FAILURE_PROB[deviceType] || 0.1;
+        if (Math.random() < failProb) {
+          await emit({ event: 'APP_SCAN_FAILED', step: screenId, deviceType, reason: 'camera_quality' });
+          await sleep(random(1500, 3000));
+          if (Math.random() < failProb * 0.8) throw new Error(`Scan failed after retry at step: ${screenId}`);
+        }
+        await emit({ event: 'APP_SCREEN_COMPLETE', step: screenId });
+        continue;
+      }
+
+      const interactionDelay = APP_INTERACTION_DELAY[merchant.digitalLiteracy] || 1800;
+      await sleep(interactionDelay + random(0, 800));
+
+      if (screenId === 'business_details' && Math.random() < 0.12) {
+        await emit({ event: 'APP_VALIDATION_ERROR', step: screenId });
+        await sleep(random(1000, 2500));
+      }
+
+      await emit({ event: 'APP_SCREEN_COMPLETE', step: screenId });
+    }
+
+    const success = Math.random() < calcAppSuccessProbability(merchant);
+    if (!success) throw new Error('App submission failed - server validation error');
+
+    const completionTimeMs = Date.now() - startTime;
+    const summary = { success: true, completionTimeMs, stepsCompleted: currentStep, totalSteps: maxSteps, channel: 'APP', digitalLiteracy: merchant.digitalLiteracy, networkProfile: merchant.networkProfile, deviceType };
+    await emit({ event: 'ONBOARDING_SUMMARY', summary });
+    return summary;
+  } catch (error) {
+    const summary = { success: false, error: error.message, failedAtStep: currentStep, totalSteps: maxSteps, timeBeforeFailure: Date.now() - startTime, channel: 'APP', digitalLiteracy: merchant.digitalLiteracy, networkProfile: merchant.networkProfile, deviceType };
+    await emit({ event: 'ONBOARDING_SUMMARY', summary });
+    return summary;
+  }
+}
+
 // ── Job Processor ─────────────────────────────────────────────────────────────
 async function processJob(job) {
   const merchant = job.data;
+  const channelId = (merchant.channel || 'WEB').toUpperCase();
+
+  // USSD and APP channels don't need a browser
+  if (channelId === 'USSD') {
+    console.log(`[${WORKER_ID}] Starting USSD simulation for ${merchant.merchantId}`);
+    return runUSSDSimulation(merchant);
+  }
+  if (channelId === 'APP') {
+    console.log(`[${WORKER_ID}] Starting APP simulation for ${merchant.merchantId}`);
+    return runAppSimulation(merchant);
+  }
+
+  // WEB channel — uses Playwright browser pool
   await waitForSlot();
 
   const b = await ensureBrowser();  const deviceType = merchant.deviceType || merchant.deviceProfile || 'android_mid';

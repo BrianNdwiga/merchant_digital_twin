@@ -122,6 +122,30 @@ function detectFrictionPoints() {
     });
   }
 
+  // Detect app-level errors (APP channel)
+  const appErrors = events.filter(e => e.event === 'APP_STEP' && e.step === 'ERROR');
+  if (appErrors.length >= 1) {
+    frictionPoints.push({
+      type: 'technical',
+      location: 'app_flow',
+      severity: appErrors.length >= 3 ? 'high' : 'medium',
+      count: appErrors.length,
+      description: `${appErrors.length} app automation error(s): ${appErrors[0]?.detail || 'unknown'}`
+    });
+  }
+
+  // Detect PIN entry failures (APP channel)
+  const pinErrors = events.filter(e => e.event === 'VALIDATION_ERROR' && e.field === 'PIN');
+  if (pinErrors.length >= 1) {
+    frictionPoints.push({
+      type: 'ux',
+      location: 'pin_entry',
+      severity: 'medium',
+      count: pinErrors.length,
+      description: `${pinErrors.length} incorrect PIN attempt(s) — users struggling with PIN entry`
+    });
+  }
+
   return frictionPoints;
 }
 

@@ -95,7 +95,7 @@ function AIInsights({ insights }) {
         </div>
       )}
 
-      {frictionPoints.length === 0 && personaStruggles.length === 0 && networkImpact.length === 0 && (
+      {(frictionPoints?.length ?? 0) === 0 && (personaStruggles?.length ?? 0) === 0 && (networkImpact?.length ?? 0) === 0 && (
         <div className="no-issues">
           <div className="success-icon">✅</div>
           <p>No major issues detected. Onboarding flow performing well!</p>
